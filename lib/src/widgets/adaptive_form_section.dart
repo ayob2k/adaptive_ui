@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../adaptive_platform_ui.dart';
+import '../../adaptive_ui.dart';
 
 /// An adaptive form section widget that displays a group of form rows with
 /// optional header and footer.

@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 class CardDemoPage extends StatefulWidget {
   const CardDemoPage({super.key});

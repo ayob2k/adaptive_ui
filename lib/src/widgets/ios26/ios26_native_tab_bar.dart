@@ -209,7 +209,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
 
       final platformView = widget.showNativeView
           ? UiKitView(
-              viewType: 'adaptive_platform_ui/ios26_tab_bar',
+              viewType: 'adaptive_ui/ios26_tab_bar',
               creationParams: creationParams,
               creationParamsCodec: const StandardMessageCodec(),
               onPlatformViewCreated: _onCreated,
@@ -265,7 +265,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   }
 
   void _onCreated(int id) {
-    final ch = MethodChannel('adaptive_platform_ui/ios26_tab_bar_$id');
+    final ch = MethodChannel('adaptive_ui/ios26_tab_bar_$id');
     _channel = ch;
     ch.setMethodCallHandler(_onMethodCall);
     _lastIndex = null;
@@ -498,7 +498,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         await ch.invokeMethod('setStyle', style);
       }
 
-      await ch.invokeMethod('setSelectedIndex', {'index': widget.selectedIndex});
+      await ch.invokeMethod('setSelectedIndex', {
+        'index': widget.selectedIndex,
+      });
       _lastIndex = widget.selectedIndex;
       await _requestIntrinsicSize();
     } catch (_) {}

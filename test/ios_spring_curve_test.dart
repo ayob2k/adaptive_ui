@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 // Import via the public barrel — this also proves IOSSpringCurve is exported.
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 void main() {
   group('IOSSpringCurve', () {

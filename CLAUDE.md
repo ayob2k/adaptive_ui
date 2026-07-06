@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Flutter plugin (`adaptive_platform_ui`) that renders platform-adaptive widgets:
+A Flutter plugin (`adaptive_ui`) that renders platform-adaptive widgets:
+
 - **iOS 26+**: Native UIKit components with Liquid Glass design via platform views
 - **iOS 18 and below**: Flutter Cupertino widgets
 - **Android**: Flutter Material Design 3 widgets
@@ -59,7 +60,7 @@ else (Android)                 → MaterialWidget
 
 Each native component has three parts:
 
-1. **Dart side** (`lib/src/widgets/ios26/ios26_*.dart`): Creates a `UiKitView` with `viewType: 'adaptive_platform_ui/ios26_{component}'`, passes configuration as `creationParams`, and sets up a `MethodChannel` with pattern `adaptive_platform_ui/{component}_{instanceId}` for callbacks.
+1. **Dart side** (`lib/src/widgets/ios26/ios26_*.dart`): Creates a `UiKitView` with `viewType: 'adaptive_ui/ios26_{component}'`, passes configuration as `creationParams`, and sets up a `MethodChannel` with pattern `adaptive_ui/{component}_{instanceId}` for callbacks.
 
 2. **Swift factory** (`ios/Classes/iOS26*View.swift`): Implements `FlutterPlatformViewFactory`, registered in `AdaptivePlatformUiPlugin.swift`.
 
@@ -76,6 +77,7 @@ Each native component has three parts:
 ### iOS 26+ Native Components (Swift)
 
 Located in `ios/Classes/`:
+
 - Button, Switch, Slider, SegmentedControl (input controls)
 - ToolbarPlatformView (UINavigationBar with Liquid Glass)
 - TabBarPlatformView (UITabBar with badges)

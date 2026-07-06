@@ -169,7 +169,7 @@ class _IOS26AlertDialogState extends State<IOS26AlertDialog> {
       };
 
       final platformView = UiKitView(
-        viewType: 'adaptive_platform_ui/ios26_alert_dialog',
+        viewType: 'adaptive_ui/ios26_alert_dialog',
         creationParams: creationParams,
         creationParamsCodec: const StandardMessageCodec(),
         onPlatformViewCreated: _onCreated,
@@ -207,7 +207,7 @@ class _IOS26AlertDialogState extends State<IOS26AlertDialog> {
   }
 
   void _onCreated(int id) {
-    final ch = MethodChannel('adaptive_platform_ui/ios26_alert_dialog_$id');
+    final ch = MethodChannel('adaptive_ui/ios26_alert_dialog_$id');
     _channel = ch;
     ch.setMethodCallHandler(_onMethodCall);
     _lastTint = _effectiveTint != null ? _colorToARGB(_effectiveTint!) : null;

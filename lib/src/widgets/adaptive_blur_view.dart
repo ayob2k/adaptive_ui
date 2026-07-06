@@ -332,7 +332,7 @@ class Ios26NativeBlurViewState extends State<Ios26NativeBlurView> {
           // Native blur view in background
           Positioned.fill(
             child: UiKitView(
-              viewType: 'adaptive_platform_ui/ios26_blur_view',
+              viewType: 'adaptive_ui/ios26_blur_view',
               creationParams: {
                 'blurStyle': widget.blurStyle.toUIBlurEffectStyle(),
                 'isDark':
@@ -340,9 +340,7 @@ class Ios26NativeBlurViewState extends State<Ios26NativeBlurView> {
               },
               creationParamsCodec: const StandardMessageCodec(),
               onPlatformViewCreated: (int id) {
-                _channel = MethodChannel(
-                  'adaptive_platform_ui/ios26_blur_view_$id',
-                );
+                _channel = MethodChannel('adaptive_ui/ios26_blur_view_$id');
               },
             ),
           ),

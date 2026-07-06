@@ -81,7 +81,7 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
     private var alertStyle: String = "glass"
 
     init(frame: CGRect, viewId: Int64, args: Any?, messenger: FlutterBinaryMessenger) {
-        self.channel = FlutterMethodChannel(name: "adaptive_platform_ui/ios26_alert_dialog_\(viewId)", binaryMessenger: messenger)
+        self.channel = FlutterMethodChannel(name: "adaptive_ui/ios26_alert_dialog_\(viewId)", binaryMessenger: messenger)
         self.container = UIView(frame: frame)
 
         var title: String = ""

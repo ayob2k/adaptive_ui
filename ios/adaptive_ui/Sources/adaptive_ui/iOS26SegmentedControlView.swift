@@ -55,7 +55,7 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
         }
 
         channel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/ios26_segmented_control_\(controlId)",
+            name: "adaptive_ui/ios26_segmented_control_\(controlId)",
             binaryMessenger: messenger
         )
 

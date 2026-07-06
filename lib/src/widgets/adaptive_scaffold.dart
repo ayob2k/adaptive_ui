@@ -1,4 +1,4 @@
-import 'package:adaptive_platform_ui/src/widgets/ios26/ios26_native_tab_bar.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';

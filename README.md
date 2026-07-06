@@ -1,24 +1,24 @@
 # Adaptive Platform UI
 
-[![CI](https://github.com/berkaycatak/adaptive_platform_ui/workflows/CI/badge.svg)](https://github.com/berkaycatak/adaptive_platform_ui/actions)
-[![Release](https://github.com/berkaycatak/adaptive_platform_ui/workflows/Release/badge.svg)](https://github.com/berkaycatak/adaptive_platform_ui/releases)
+[![CI](https://github.com/berkaycatak/adaptive_ui/workflows/CI/badge.svg)](https://github.com/berkaycatak/adaptive_ui/actions)
+[![Release](https://github.com/berkaycatak/adaptive_ui/workflows/Release/badge.svg)](https://github.com/berkaycatak/adaptive_ui/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.0.0-blue.svg)](https://flutter.dev)
 
 A Flutter package that provides adaptive platform-specific widgets with native iOS 26+ designs, traditional Cupertino widgets for older iOS versions, and Material Design for Android.
 
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/blob/main/img/highlight-img.png?raw=true" alt="iOS 26 Native Toolbar">
+  <img src="https://github.com/berkaycatak/adaptive_ui/blob/main/img/highlight-img.png?raw=true" alt="iOS 26 Native Toolbar">
 
 ## iOS 26+ Native Toolbar & Tab Bar
 
 <p align="center">
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/raw/main/img/appbar.gif" alt="iOS 26 Native Toolbar" width="300"/>
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/raw/main/img/bottombar.gif" alt="iOS 26 Native Tab Bar" width="300"/>
+  <img src="https://github.com/berkaycatak/adaptive_ui/raw/main/img/appbar.gif" alt="iOS 26 Native Toolbar" width="300"/>
+  <img src="https://github.com/berkaycatak/adaptive_ui/raw/main/img/bottombar.gif" alt="iOS 26 Native Tab Bar" width="300"/>
 </p>
 
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/blob/main/img/bottom_nav2_p.png?raw=true" alt="iOS 26 Native Tab Bar">
+  <img src="https://github.com/berkaycatak/adaptive_ui/blob/main/img/bottom_nav2_p.png?raw=true" alt="iOS 26 Native Tab Bar">
 
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/blob/main/img/toolbar2_p.png?raw=true" alt="iOS 26 Native Tab Bar">
+  <img src="https://github.com/berkaycatak/adaptive_ui/blob/main/img/toolbar2_p.png?raw=true" alt="iOS 26 Native Tab Bar">
 
 ![native_search](https://github.com/user-attachments/assets/da33cb62-94d7-47da-8f0c-327bbd6ee04e)
 
@@ -27,12 +27,14 @@ Native iOS 26 UIToolbar and UITabBar with Liquid Glass blur effects, minimize be
 ## Features
 
 **AdaptiveApp** - Unified app configuration for all platforms:
+
 - Separate themes for Material (Android) and Cupertino (iOS)
 - Full theme mode support (light, dark, system)
 - Router support via `AdaptiveApp.router()`
 - Zero configuration required
 
 **iOS 26+ Native Designs** - Modern iOS 26 components with:
+
 - **Native UIToolbar** - Liquid Glass blur effects with native iOS 26 design
 - **Native UITabBar** - Tab bar with minimize behavior and smooth animations
 - **Native UIButton** - Button styles with spring animations and haptic feedback
@@ -80,9 +82,10 @@ Without these delegates, date/time pickers and other widgets will show English t
 
 ### AdaptiveScaffold with AdaptiveAppBar
 
-<img src="https://github.com/berkaycatak/adaptive_platform_ui/blob/main/img/toolbar_p.png?raw=true" alt="iOS 26 Native Toolbar">
+<img src="https://github.com/berkaycatak/adaptive_ui/blob/main/img/toolbar_p.png?raw=true" alt="iOS 26 Native Toolbar">
 
 **Basic Usage:**
+
 ```dart
 AdaptiveScaffold(
   appBar: AdaptiveAppBar(
@@ -114,6 +117,7 @@ AdaptiveScaffold(
 ```
 
 **iOS 26 Native Toolbar:**
+
 ```dart
 AdaptiveScaffold(
   appBar: AdaptiveAppBar(
@@ -126,6 +130,7 @@ AdaptiveScaffold(
 ```
 
 **iOS 26 Native Bottom Bar:**
+
 ```dart
 AdaptiveScaffold(
   bottomNavigationBar: AdaptiveBottomNavigationBar(
@@ -137,7 +142,9 @@ AdaptiveScaffold(
   body: YourContent(),
 )
 ```
+
 **No AppBar or Bottom Navigation:**
+
 ```dart
 // If appBar and bottomNavigationBar are null, neither will be shown
 AdaptiveScaffold(
@@ -146,6 +153,7 @@ AdaptiveScaffold(
 ```
 
 **Key Features:**
+
 - 🎨 **AdaptiveAppBar**: Centralized app bar configuration
 - 📱 **AdaptiveBottomNavigationBar**: Centralized bottom navigation configuration
 - 🔧 **Custom Navigation Bars**: Provide your own navigation components
@@ -154,15 +162,14 @@ AdaptiveScaffold(
 - 🔄 **Flexible**: Null parameters hide components
 
 Adaptive Bottom Navigation Bar (Destinations):
-<p align="center">
-  <img src="https://raw.githubusercontent.com/berkaycatak/adaptive_platform_ui/refs/heads/main/img/bottom_nav_p.png" alt="Native Toolbar"/>
-</p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/berkaycatak/adaptive_ui/refs/heads/main/img/bottom_nav_p.png" alt="Native Toolbar"/>
+</p>
 
 ### AdaptiveButton
 
-<img src="https://raw.githubusercontent.com/berkaycatak/adaptive_platform_ui/refs/heads/main/img/buttons_p.png" alt="iOS 26 Native Toolbar">
-
+<img src="https://raw.githubusercontent.com/berkaycatak/adaptive_ui/refs/heads/main/img/buttons_p.png" alt="iOS 26 Native Toolbar">
 
 ```dart
 // Basic button with label
@@ -190,8 +197,8 @@ AdaptiveButton.icon(
 ```
 
 ### AdaptiveAlertDialog
-<img src="https://raw.githubusercontent.com/berkaycatak/adaptive_platform_ui/refs/heads/main/img/alert_p.png" alt="iOS 26 Native Toolbar">
 
+<img src="https://raw.githubusercontent.com/berkaycatak/adaptive_ui/refs/heads/main/img/alert_p.png" alt="iOS 26 Native Toolbar">
 
 ```dart
 // Basic alert dialog
@@ -288,7 +295,7 @@ AdaptiveContextMenu(
 ### AdaptivePopupMenuButton
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/berkaycatak/adaptive_platform_ui/refs/heads/main/img/popup_p.png" alt="iOS 26 Native Popup">
+<img src="https://raw.githubusercontent.com/berkaycatak/adaptive_ui/refs/heads/main/img/popup_p.png" alt="iOS 26 Native Popup">
 </p>
 
 ```dart
@@ -356,7 +363,7 @@ AdaptivePopupMenuButton.widget<String>(
 ### AdaptiveSegmentedControl
 
 <p align="center">
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/raw/main/img/segmented_control.gif" alt="Segmented Control" width="300"/>
+  <img src="https://github.com/berkaycatak/adaptive_ui/raw/main/img/segmented_control.gif" alt="Segmented Control" width="300"/>
 </p>
 
 ```dart
@@ -385,7 +392,7 @@ AdaptiveSegmentedControl(
 ### AdaptiveSwitch
 
 <p align="center">
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/raw/main/img/switch.gif" alt="Adaptive Switch" width="300"/>
+  <img src="https://github.com/berkaycatak/adaptive_ui/raw/main/img/switch.gif" alt="Adaptive Switch" width="300"/>
 </p>
 
 ```dart
@@ -400,7 +407,7 @@ AdaptiveSwitch(
 ### AdaptiveSlider
 
 <p align="center">
-  <img src="https://github.com/berkaycatak/adaptive_platform_ui/raw/main/img/slider.gif" alt="Adaptive Slider" width="300"/>
+  <img src="https://github.com/berkaycatak/adaptive_ui/raw/main/img/slider.gif" alt="Adaptive Slider" width="300"/>
 </p>
 
 ```dart
@@ -966,7 +973,7 @@ AdaptiveButton(
 Use the `PlatformInfo` utility class to check platform and iOS version:
 
 ```dart
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 // Check platform
 if (PlatformInfo.isIOS) {
@@ -1004,7 +1011,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  adaptive_platform_ui: ^0.1.0
+  adaptive_ui: ^0.1.0
 ```
 
 Then run:
@@ -1020,7 +1027,7 @@ flutter pub get
 Use `AdaptiveApp` to automatically configure your app for each platform:
 
 ```dart
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 void main() {
   runApp(const MyApp());
@@ -1067,24 +1074,26 @@ AdaptiveApp.router(
 ```
 
 **Key Features:**
+
 - 🎨 Separate themes for Material (Android) and Cupertino (iOS)
 - 🌓 Full theme mode support (light, dark, system)
 - 🔄 Automatic platform detection
 - 🚀 Router support via `AdaptiveApp.router()`
 - 🛠️ Platform-specific callbacks for advanced configuration
 
-
 ## iOS 26 Native Features
 
 When running on iOS 26+, widgets automatically use **native UIKit platform views** with Liquid Glass design:
 
 ### Platform Architecture
+
 - **Native UIKit Views**: Uses `UiKitView` to render actual iOS 26 UIKit components
 - **Platform Channels**: Bidirectional communication between Flutter and native iOS code
 - **Liquid Glass Design**: Authentic iOS 26 visual effects rendered by UIKit
 - **Zero Overhead**: No custom painting or emulation - pure native rendering
 
 ### Visual Features
+
 - **Modern corner radius**: Native iOS 26 design language
 - **Dynamic shadows**: Subtle multi-layer shadows
 - **Spring animations**: Smooth spring damping with 0.95x scale on press
@@ -1093,12 +1102,14 @@ When running on iOS 26+, widgets automatically use **native UIKit platform views
 - **SF Symbols**: Native SF Symbol rendering with hierarchical color support
 
 ### Interaction
+
 - **Press states**: Visual feedback with scale animation
 - **Gesture handling**: Native UIKit gesture recognizers
 - **Haptic feedback**: Medium impact feedback on interactions
 - **Disabled states**: Proper opacity and interaction blocking
 
 ### Typography
+
 - **SF Pro font**: Native iOS system font with proper weights
 - **Dynamic Type**: Respects system font size settings
 - **Weight**: Appropriate font weights for each component
@@ -1113,6 +1124,7 @@ flutter run
 ```
 
 The example app includes:
+
 - Platform information display
 - All widget types showcase
 - Interactive demos
@@ -1126,7 +1138,7 @@ The example app includes:
 Native iOS 26+ search tab bar with UITabBarController that transforms the tab bar into a search bar when the search tab is selected.
 
 ```dart
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 // Enable native search tab bar
 await IOS26NativeSearchTabBar.enable(
@@ -1168,6 +1180,7 @@ await IOS26NativeSearchTabBar.showSearch();
 ```
 
 **Features:**
+
 - ✨ Native UITabBarController integration
 - 🔍 Search tab transforms into UISearchController
 - 💎 iOS 26+ Liquid Glass effects
@@ -1189,12 +1202,14 @@ This feature replaces Flutter's root view controller with a native UITabBarContr
 **Why These Issues Occur:**
 
 The feature attempts to merge two incompatible architectural philosophies:
+
 - **Flutter**: Single-threaded, declarative, expects to own entire screen
 - **UIKit**: Multi-threaded, imperative, view controller-based
 
 When UITabBarController becomes root, Flutter engine still believes it owns the screen, creating a parent-child relationship neither framework was designed to handle.
 
 **Recommendation:**
+
 - ✅ Use for prototyping and concept validation
 - ✅ Use for demos and presentations
 - ❌ Do NOT use in production apps
@@ -1278,8 +1293,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Thanks to all contributors who helped improve this package!
 
-<a href="https://github.com/berkaycatak/adaptive_platform_ui/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=berkaycatak/adaptive_platform_ui" />
+<a href="https://github.com/berkaycatak/adaptive_ui/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=berkaycatak/adaptive_ui" />
 </a>
 
 ## Author
@@ -1288,6 +1303,6 @@ Berkay Çatak
 
 ## Support
 
-- 💬 **[Discussions](https://github.com/berkaycatak/adaptive_platform_ui/discussions)** - Ask questions, share ideas, and showcase your projects
-- 🐛 **[Issues](https://github.com/berkaycatak/adaptive_platform_ui/issues)** - Report bugs and request features
+- 💬 **[Discussions](https://github.com/berkaycatak/adaptive_ui/discussions)** - Ask questions, share ideas, and showcase your projects
+- 🐛 **[Issues](https://github.com/berkaycatak/adaptive_ui/issues)** - Report bugs and request features
 - 📖 **[Contributing Guide](.github/CONTRIBUTING.md)** - Learn how to contribute

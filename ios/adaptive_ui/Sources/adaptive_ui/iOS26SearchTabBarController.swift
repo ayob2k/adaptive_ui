@@ -21,7 +21,7 @@ class iOS26SearchTabBarController: UITabBarController, UISearchResultsUpdating, 
 
     init(viewId: Int64, args: [String: Any]?, messenger: FlutterBinaryMessenger) {
         self.channel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/ios26_search_tab_bar_\(viewId)",
+            name: "adaptive_ui/ios26_search_tab_bar_\(viewId)",
             binaryMessenger: messenger
         )
         self.flutterEngine = nil

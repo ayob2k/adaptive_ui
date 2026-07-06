@@ -38,7 +38,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
     init(frame: CGRect, viewId: Int64, args: Any?, messenger: FlutterBinaryMessenger) {
         self.channel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/ios26_tab_bar_\(viewId)",
+            name: "adaptive_ui/ios26_tab_bar_\(viewId)",
             binaryMessenger: messenger
         )
         self.container = LayoutAwareTabBarContainerView(frame: frame)

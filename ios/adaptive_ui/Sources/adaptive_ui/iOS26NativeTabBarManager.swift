@@ -33,7 +33,7 @@ class iOS26NativeTabBarManager: NSObject {
     func setup(messenger: FlutterBinaryMessenger) {
         // Setup method channel
         self.methodChannel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/native_tab_bar",
+            name: "adaptive_ui/native_tab_bar",
             binaryMessenger: messenger
         )
 

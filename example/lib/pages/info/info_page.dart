@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 import 'package:adaptive_platform_ui_example/utils/global_variables.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -88,9 +88,9 @@ class _InfoPageState extends State<InfoPage> {
             _buildSectionHeader('Package Information'),
             const SizedBox(height: 12),
             _buildInfoCard([
-              _InfoRow('Package', 'adaptive_platform_ui'),
+              _InfoRow('Package', 'adaptive_ui'),
               _InfoRow('Purpose', 'Adaptive Platform Widgets'),
-              _InfoRow('GitHub', 'github.com/berkaycatak/adaptive_platform_ui'),
+              _InfoRow('GitHub', 'github.com/berkaycatak/adaptive_ui'),
             ]),
             const SizedBox(height: 40),
           ],

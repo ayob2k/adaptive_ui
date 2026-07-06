@@ -5,16 +5,19 @@ This directory contains comprehensive tests for all adaptive widgets in the pack
 ## Running Tests
 
 To run all tests:
+
 ```bash
 flutter test
 ```
 
 To run a specific test file:
+
 ```bash
 flutter test test/adaptive_button_test.dart
 ```
 
 To run tests with coverage:
+
 ```bash
 flutter test --coverage
 ```
@@ -24,7 +27,9 @@ flutter test --coverage
 ### Widget Tests
 
 #### `adaptive_button_test.dart`
+
 Tests for `AdaptiveButton` and `IOS26Button` widgets:
+
 - Button creation with label, child, and icon
 - onPressed callbacks
 - Disabled state
@@ -35,7 +40,9 @@ Tests for `AdaptiveButton` and `IOS26Button` widgets:
 - iconColor parameter
 
 #### `adaptive_text_field_test.dart`
+
 Tests for `AdaptiveTextField` and `AdaptiveTextFormField` widgets:
+
 - Text field creation with placeholder
 - onChanged callbacks
 - Password fields (obscureText)
@@ -48,28 +55,36 @@ Tests for `AdaptiveTextField` and `AdaptiveTextFormField` widgets:
 - onSaved callbacks
 
 #### `adaptive_switch_test.dart`
+
 Tests for input control widgets:
+
 - **AdaptiveSwitch**: Value changes, disabled state, custom colors
 - **AdaptiveSlider**: Value changes, dragging, min/max values, divisions
 - **AdaptiveCheckbox**: Value changes, tristate mode, disabled state
 - **AdaptiveRadio**: Group value changes, disabled state
 
 #### `adaptive_card_badge_test.dart`
+
 Tests for container and decoration widgets:
+
 - **AdaptiveCard**: Child rendering, custom padding, colors, border radius, elevation
 - **AdaptiveBadge**: Count display, label display, 99+ for large counts, showZero, custom colors, large size
 - **AdaptiveTooltip**: Message display, long press behavior, preferBelow, custom height
 - **AdaptiveListTile**: Title/subtitle rendering, onTap/onLongPress callbacks, leading/trailing widgets, selected state
 
 #### `adaptive_segmented_control_test.dart`
+
 Tests for selection and dialog widgets:
+
 - **AdaptiveSegmentedControl**: Label rendering, segment selection, icon support, custom colors
 - **AdaptiveAlertDialog**: Dialog display, actions, input fields, destructive actions
 - **AdaptiveContextMenu**: Long press menu, action callbacks
 - **AdaptivePopupMenuButton**: Text and icon buttons, menu display, item selection
 
 #### `adaptive_snackbar_pickers_test.dart`
+
 Tests for pickers and layout widgets:
+
 - **AdaptiveSnackBar**: Message display, different types (info, success, warning, error), action buttons, custom duration
 - **AdaptiveDatePicker**: Dialog display, date selection, date range, cancellation
 - **AdaptiveTimePicker**: Dialog display, time selection, 24-hour format, cancellation
@@ -78,7 +93,9 @@ Tests for pickers and layout widgets:
 - **AdaptiveBottomNavigationBar**: Item rendering, selection, badge counts
 
 #### `adaptive_app_test.dart`
+
 Tests for `AdaptiveApp` and related classes:
+
 - **AdaptiveApp**: Home, routes, navigation, builder, themes (light/dark)
 - **AdaptiveApp.router**: Router configuration, builder, title
 - **MaterialAppData**: Default and custom values
@@ -86,7 +103,9 @@ Tests for `AdaptiveApp` and related classes:
 - **PlatformTarget**: All enum values
 
 #### `adaptive_app_bar_action_test.dart`
+
 Tests for `AdaptiveAppBarAction` data class:
+
 - Action creation with iOS symbol, Android icon, and title
 - Assert validation when all parameters are null
 - onPressed callback
@@ -95,7 +114,9 @@ Tests for `AdaptiveAppBarAction` data class:
 - toNativeMap() method for native platform channels
 
 #### `platform_info_test.dart`
+
 Tests for platform detection utilities:
+
 - Platform type detection (iOS, Android, Web)
 - iOS version detection
 - Version range checking
@@ -106,6 +127,7 @@ Tests for platform detection utilities:
 **📊 Current Status: 143 tests covering 23 widgets (100% widget coverage)**
 
 The test suite covers:
+
 - ✅ **23 adaptive widgets** with comprehensive test cases
 - ✅ **Widget creation** and rendering
 - ✅ **User interactions** (tap, long press, drag)
@@ -124,7 +146,7 @@ Each test file follows this structure:
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 void main() {
   group('WidgetName', () {
@@ -170,7 +192,7 @@ Example:
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 void main() {
   group('AdaptiveNewWidget', () {
@@ -214,8 +236,8 @@ void main() {
 
 ## Continuous Integration
 
-[![CI](https://github.com/berkaycatak/adaptive_platform_ui/workflows/CI/badge.svg)](https://github.com/berkaycatak/adaptive_platform_ui/actions)
-[![codecov](https://codecov.io/gh/berkaycatak/adaptive_platform_ui/branch/main/graph/badge.svg)](https://codecov.io/gh/berkaycatak/adaptive_platform_ui)
+[![CI](https://github.com/berkaycatak/adaptive_ui/workflows/CI/badge.svg)](https://github.com/berkaycatak/adaptive_ui/actions)
+[![codecov](https://codecov.io/gh/berkaycatak/adaptive_ui/branch/main/graph/badge.svg)](https://codecov.io/gh/berkaycatak/adaptive_ui)
 
 All tests are automatically run on every push and pull request via GitHub Actions.
 

@@ -15,7 +15,7 @@ class iOS26PopupMenuButtonView: NSObject, FlutterPlatformView {
     private var isDestructive: [Bool] = []
 
     init(frame: CGRect, viewId: Int64, args: Any?, messenger: FlutterBinaryMessenger) {
-        self.channel = FlutterMethodChannel(name: "adaptive_platform_ui/ios26_popup_menu_button_\(viewId)", binaryMessenger: messenger)
+        self.channel = FlutterMethodChannel(name: "adaptive_ui/ios26_popup_menu_button_\(viewId)", binaryMessenger: messenger)
         self.container = UIView(frame: frame)
         self.button = UIButton(type: .system)
 

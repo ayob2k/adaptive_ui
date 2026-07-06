@@ -1,8 +1,8 @@
 import Flutter
 import UIKit
 
-/// Factory for creating iOS 26 native switch platform views
-class iOS26SwitchViewFactory: NSObject, FlutterPlatformViewFactory {
+/// Factory for creating iOS 26 native slider platform views
+class iOS26SliderViewFactory: NSObject, FlutterPlatformViewFactory {
     private var messenger: FlutterBinaryMessenger
 
     init(messenger: FlutterBinaryMessenger) {
@@ -15,7 +15,7 @@ class iOS26SwitchViewFactory: NSObject, FlutterPlatformViewFactory {
         viewIdentifier viewId: Int64,
         arguments args: Any?
     ) -> FlutterPlatformView {
-        return iOS26SwitchView(
+        return iOS26SliderView(
             frame: frame,
             viewIdentifier: viewId,
             arguments: args,
@@ -28,14 +28,16 @@ class iOS26SwitchViewFactory: NSObject, FlutterPlatformViewFactory {
     }
 }
 
-/// Native iOS 26 switch implementation with native UISwitch
-class iOS26SwitchView: NSObject, FlutterPlatformView {
+/// Native iOS 26 slider implementation with native UISlider
+class iOS26SliderView: NSObject, FlutterPlatformView {
     private var _view: UIView
-    private var switchControl: UISwitch!
+    private var sliderControl: UISlider!
     private var channel: FlutterMethodChannel
-    private var switchId: Int
+    private var sliderId: Int
 
     // Configuration
+    private var minValue: Float = 0.0
+    private var maxValue: Float = 1.0
     private var isEnabled: Bool = true
     private var isDark: Bool = false
 
@@ -49,23 +51,30 @@ class iOS26SwitchView: NSObject, FlutterPlatformView {
 
         // Extract configuration from arguments
         if let config = args as? [String: Any] {
-            switchId = config["id"] as? Int ?? 0
+            sliderId = config["id"] as? Int ?? 0
             isEnabled = config["enabled"] as? Bool ?? true
             isDark = config["isDark"] as? Bool ?? false
+
+            if let min = config["min"] as? Double {
+                minValue = Float(min)
+            }
+            if let max = config["max"] as? Double {
+                maxValue = Float(max)
+            }
         } else {
-            switchId = 0
+            sliderId = 0
         }
 
         // Setup method channel for communication
         channel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/ios26_switch_\(switchId)",
+            name: "adaptive_ui/ios26_slider_\(sliderId)",
             binaryMessenger: messenger
         )
 
         super.init()
 
-        // Create the native switch
-        createNativeSwitch(with: args)
+        // Create the native slider
+        createNativeSlider(with: args)
 
         // Apply Flutter's brightness override
         if #available(iOS 13.0, *) {
@@ -82,55 +91,75 @@ class iOS26SwitchView: NSObject, FlutterPlatformView {
         return _view
     }
 
-    private func createNativeSwitch(with args: Any?) {
-        // Create iOS UISwitch
-        switchControl = UISwitch()
-        switchControl.translatesAutoresizingMaskIntoConstraints = false
+    private func createNativeSlider(with args: Any?) {
+        // Create iOS UISlider
+        sliderControl = UISlider()
+        sliderControl.translatesAutoresizingMaskIntoConstraints = false
 
         // Enable user interaction
-        switchControl.isUserInteractionEnabled = true
+        sliderControl.isUserInteractionEnabled = true
         _view.isUserInteractionEnabled = true
+
+        // Set min/max values
+        sliderControl.minimumValue = minValue
+        sliderControl.maximumValue = maxValue
 
         // Extract initial configuration
         if let config = args as? [String: Any] {
             // Set initial value
-            if let value = config["value"] as? Bool {
-                switchControl.isOn = value
+            if let value = config["value"] as? Double {
+                sliderControl.value = Float(value)
             }
 
-            // Set active (on) color
+            // Set active (track) color
             if let argb = config["activeColor"] as? Int {
-                switchControl.onTintColor = UIColor(argb: argb)
+                sliderControl.minimumTrackTintColor = UIColor(argb: argb)
             }
 
             // Set thumb color
             if let argb = config["thumbColor"] as? Int {
-                switchControl.thumbTintColor = UIColor(argb: argb)
+                sliderControl.thumbTintColor = UIColor(argb: argb)
             }
         }
 
         // Setup constraints
-        _view.addSubview(switchControl)
+        _view.addSubview(sliderControl)
         NSLayoutConstraint.activate([
-            switchControl.leadingAnchor.constraint(equalTo: _view.leadingAnchor),
-            switchControl.trailingAnchor.constraint(equalTo: _view.trailingAnchor),
-            switchControl.topAnchor.constraint(equalTo: _view.topAnchor),
-            switchControl.bottomAnchor.constraint(equalTo: _view.bottomAnchor),
+            sliderControl.leadingAnchor.constraint(equalTo: _view.leadingAnchor),
+            sliderControl.trailingAnchor.constraint(equalTo: _view.trailingAnchor),
+            sliderControl.topAnchor.constraint(equalTo: _view.topAnchor),
+            sliderControl.bottomAnchor.constraint(equalTo: _view.bottomAnchor),
         ])
 
-        // Add value changed action
-        switchControl.addTarget(self, action: #selector(switchValueChanged), for: .valueChanged)
+        // Add value changed actions
+        sliderControl.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
+        sliderControl.addTarget(self, action: #selector(sliderTouchDown), for: .touchDown)
+        sliderControl.addTarget(self, action: #selector(sliderTouchUp), for: [.touchUpInside, .touchUpOutside])
 
         // Apply enabled state
-        switchControl.isEnabled = isEnabled
+        sliderControl.isEnabled = isEnabled
     }
 
-    @objc private func switchValueChanged() {
+    @objc private func sliderValueChanged() {
         // Notify Flutter side about value change
-        channel.invokeMethod("valueChanged", arguments: ["value": switchControl.isOn])
+        channel.invokeMethod("valueChanged", arguments: ["value": Double(sliderControl.value)])
 
         // Add haptic feedback
         let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
+    }
+
+    @objc private func sliderTouchDown() {
+        // Notify Flutter side about touch start
+        channel.invokeMethod("changeStart", arguments: ["value": Double(sliderControl.value)])
+    }
+
+    @objc private func sliderTouchUp() {
+        // Notify Flutter side about touch end
+        channel.invokeMethod("changeEnd", arguments: ["value": Double(sliderControl.value)])
+
+        // Add haptic feedback
+        let impact = UIImpactFeedbackGenerator(style: .medium)
         impact.impactOccurred()
     }
 
@@ -138,8 +167,21 @@ class iOS26SwitchView: NSObject, FlutterPlatformView {
         switch call.method {
         case "setValue":
             if let args = call.arguments as? [String: Any],
-               let value = args["value"] as? Bool {
-                switchControl.setOn(value, animated: true)
+               let value = args["value"] as? Double {
+                sliderControl.setValue(Float(value), animated: true)
+            }
+            result(nil)
+
+        case "setRange":
+            if let args = call.arguments as? [String: Any] {
+                if let min = args["min"] as? Double {
+                    minValue = Float(min)
+                    sliderControl.minimumValue = minValue
+                }
+                if let max = args["max"] as? Double {
+                    maxValue = Float(max)
+                    sliderControl.maximumValue = maxValue
+                }
             }
             result(nil)
 
@@ -147,22 +189,22 @@ class iOS26SwitchView: NSObject, FlutterPlatformView {
             if let args = call.arguments as? [String: Any],
                let enabled = args["enabled"] as? Bool {
                 isEnabled = enabled
-                switchControl.isEnabled = enabled
-                switchControl.alpha = enabled ? 1.0 : 0.5
+                sliderControl.isEnabled = enabled
+                sliderControl.alpha = enabled ? 1.0 : 0.5
             }
             result(nil)
 
         case "setActiveColor":
             if let args = call.arguments as? [String: Any],
                let argb = args["color"] as? Int {
-                switchControl.onTintColor = UIColor(argb: argb)
+                sliderControl.minimumTrackTintColor = UIColor(argb: argb)
             }
             result(nil)
 
         case "setThumbColor":
             if let args = call.arguments as? [String: Any],
                let argb = args["color"] as? Int {
-                switchControl.thumbTintColor = UIColor(argb: argb)
+                sliderControl.thumbTintColor = UIColor(argb: argb)
             }
             result(nil)
 

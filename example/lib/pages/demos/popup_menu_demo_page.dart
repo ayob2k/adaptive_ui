@@ -1,7 +1,7 @@
 import 'package:adaptive_platform_ui_example/utils/extensions/extensions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_ui/adaptive_ui.dart';
 
 class PopupMenuDemoPage extends StatefulWidget {
   const PopupMenuDemoPage({super.key});

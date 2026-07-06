@@ -76,9 +76,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
   void initState() {
     super.initState();
     _id = _nextId++;
-    _channel = MethodChannel(
-      'adaptive_platform_ui/ios26_segmented_control_$_id',
-    );
+    _channel = MethodChannel('adaptive_ui/ios26_segmented_control_$_id');
     _channel.setMethodCallHandler(_handleMethod);
   }
 
@@ -176,9 +174,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
 
     final effectiveSelectedTextColor =
         widget.selectedTextColor ??
-        (widget.color != null
-            ? CupertinoColors.white
-            : effectiveTextColor);
+        (widget.color != null ? CupertinoColors.white : effectiveTextColor);
 
     return <String, dynamic>{
       'textColor': _colorToARGB(effectiveTextColor),
@@ -225,7 +221,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
   Widget build(BuildContext context) {
     if (!kIsWeb && Platform.isIOS) {
       Widget control = UiKitView(
-        viewType: 'adaptive_platform_ui/ios26_segmented_control',
+        viewType: 'adaptive_ui/ios26_segmented_control',
         creationParams: _buildCreationParams(),
         creationParamsCodec: const StandardMessageCodec(),
         gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{

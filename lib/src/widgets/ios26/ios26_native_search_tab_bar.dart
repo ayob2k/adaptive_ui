@@ -30,7 +30,7 @@ import 'package:flutter/services.dart';
 /// ```
 class IOS26NativeSearchTabBar {
   static const MethodChannel _channel = MethodChannel(
-    'adaptive_platform_ui/native_tab_bar',
+    'adaptive_ui/native_tab_bar',
   );
 
   static bool _isEnabled = false;

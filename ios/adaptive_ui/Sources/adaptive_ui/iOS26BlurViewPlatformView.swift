@@ -65,7 +65,7 @@ class iOS26BlurViewPlatformView: NSObject, FlutterPlatformView {
 
         // Setup method channel
         _channel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/ios26_blur_view_\(viewId)",
+            name: "adaptive_ui/ios26_blur_view_\(viewId)",
             binaryMessenger: messenger
         )
 

@@ -67,7 +67,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         navigationBar = UINavigationBar()
         navigationItem = UINavigationItem()
         channel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/ios26_toolbar_\(viewId)",
+            name: "adaptive_ui/ios26_toolbar_\(viewId)",
             binaryMessenger: messenger
         )
 

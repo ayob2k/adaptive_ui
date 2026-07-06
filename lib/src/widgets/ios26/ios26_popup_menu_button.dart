@@ -349,13 +349,15 @@ class _IOS26PopupMenuButtonState<T> extends State<IOS26PopupMenuButton<T>> {
 
       final platformView = UiKitView(
         key: viewKey,
-        viewType: 'adaptive_platform_ui/ios26_popup_menu_button',
+        viewType: 'adaptive_ui/ios26_popup_menu_button',
         creationParams: creationParams,
         creationParamsCodec: const StandardMessageCodec(),
         onPlatformViewCreated: _onCreated,
         gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
           widget.triggerOnLongPress
-              ? Factory<LongPressGestureRecognizer>(() => LongPressGestureRecognizer())
+              ? Factory<LongPressGestureRecognizer>(
+                  () => LongPressGestureRecognizer(),
+                )
               : Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
         },
       );
@@ -432,9 +434,7 @@ class _IOS26PopupMenuButtonState<T> extends State<IOS26PopupMenuButton<T>> {
   }
 
   void _onCreated(int id) {
-    final ch = MethodChannel(
-      'adaptive_platform_ui/ios26_popup_menu_button_$id',
-    );
+    final ch = MethodChannel('adaptive_ui/ios26_popup_menu_button_$id');
     _channel = ch;
     ch.setMethodCallHandler(_onMethodCall);
     _lastTint = _effectiveTint != null ? _colorToARGB(_effectiveTint!) : null;
@@ -520,7 +520,9 @@ class _IOS26PopupMenuButtonState<T> extends State<IOS26PopupMenuButton<T>> {
               if (widget.items[i] is AdaptivePopupMenuItem<T>)
                 CupertinoActionSheetAction(
                   onPressed: () => Navigator.of(ctx).pop(i),
-                  isDestructiveAction: (widget.items[i] as AdaptivePopupMenuItem<T>).isDestructive,
+                  isDestructiveAction:
+                      (widget.items[i] as AdaptivePopupMenuItem<T>)
+                          .isDestructive,
                   child: Text(
                     (widget.items[i] as AdaptivePopupMenuItem<T>).label,
                   ),

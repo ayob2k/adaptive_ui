@@ -90,7 +90,7 @@ class iOS26ButtonView: NSObject, FlutterPlatformView {
 
         // Setup method channel for communication
         channel = FlutterMethodChannel(
-            name: "adaptive_platform_ui/ios26_button_\(buttonId)",
+            name: "adaptive_ui/ios26_button_\(buttonId)",
             binaryMessenger: messenger
         )
 

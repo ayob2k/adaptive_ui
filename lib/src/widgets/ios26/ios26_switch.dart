@@ -50,7 +50,7 @@ class _IOS26SwitchState extends State<IOS26Switch> {
   void initState() {
     super.initState();
     _id = _nextId++;
-    _channel = MethodChannel('adaptive_platform_ui/ios26_switch_$_id');
+    _channel = MethodChannel('adaptive_ui/ios26_switch_$_id');
     _channel.setMethodCallHandler(_handleMethod);
   }
 
@@ -145,7 +145,7 @@ class _IOS26SwitchState extends State<IOS26Switch> {
     // Only use native implementation on iOS
     if (!kIsWeb && Platform.isIOS) {
       final platformView = UiKitView(
-        viewType: 'adaptive_platform_ui/ios26_switch',
+        viewType: 'adaptive_ui/ios26_switch',
         creationParams: _buildCreationParams(),
         creationParamsCodec: const StandardMessageCodec(),
         gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{

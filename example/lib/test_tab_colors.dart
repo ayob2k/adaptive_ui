@@ -1,5 +1,5 @@
+import 'package:adaptive_ui/adaptive_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
 
 void main() {
   runApp(const MyApp());
