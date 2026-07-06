@@ -1,4 +1,4 @@
-group 'com.berkaycatak.adaptive_platform_ui'
+group 'com.adaptive_ui'
 version '1.0'
 
 buildscript {
@@ -25,7 +25,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    namespace 'com.berkaycatak.adaptive_platform_ui'
+    namespace 'com.adaptive_ui'
     compileSdk 34
 
     compileOptions {

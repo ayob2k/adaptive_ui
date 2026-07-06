@@ -1,4 +1,4 @@
-package com.berkaycatak.adaptive_platform_ui
+package com.adaptive_ui
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 
