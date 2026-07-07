@@ -635,7 +635,8 @@ class _ButtonDemoPageState extends State<ButtonDemoPage> {
             borderRadius: BorderRadius.circular(1000),
             onPressed: () => _showMessage(context, 'pressed'),
             style: AdaptiveButtonStyle.prominentGlass,
-            sfSymbol: SFSymbol("xmark", size: 17, color: Colors.white),
+
+            sfSymbol: SFSymbol("heart", size: 17, color: Colors.white),
           ),
         ),
         const SizedBox(height: 4),
