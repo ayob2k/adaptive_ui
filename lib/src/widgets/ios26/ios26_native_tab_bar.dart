@@ -73,6 +73,10 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   List<Uint8List?> _renderedIconBytes = [];
   List<Uint8List?> _renderedSelectedIconBytes = [];
   bool _widgetRenderScheduled = false;
+  // Incremented each time new bytes are ready; compared against _lastSentBytesVersion
+  // so setItems is only sent when bytes actually changed, not on every sync call.
+  int _iconBytesVersion = 0;
+  int _lastSentBytesVersion = -1;
 
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
@@ -81,8 +85,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       widget.tint ?? CupertinoTheme.of(context).primaryColor;
 
   bool _hasWidgetIcons() => widget.destinations.any(
-        (d) => d.icon is Widget || d.selectedIcon is Widget,
-      );
+    (d) => d.icon is Widget || d.selectedIcon is Widget,
+  );
 
   void _initIconProbes() {
     final count = widget.destinations.length;
@@ -137,6 +141,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     }
 
     if (anyRendered && mounted) {
+      _iconBytesVersion++;
       await _syncPropsToNativeIfNeeded();
     }
   }
@@ -147,8 +152,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return null;
       final image = await boundary.toImage(pixelRatio: pixelRatio);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (_) {
       return null;
@@ -269,17 +273,16 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
 
   /// Returns pre-rendered PNG bytes for Widget icons (index-aligned, null for non-widget icons).
   List<Uint8List?> _mapImageData() => List.generate(
-        widget.destinations.length,
-        (i) => i < _renderedIconBytes.length ? _renderedIconBytes[i] : null,
-      );
+    widget.destinations.length,
+    (i) => i < _renderedIconBytes.length ? _renderedIconBytes[i] : null,
+  );
 
   List<Uint8List?> _mapSelectedImageData() => List.generate(
-        widget.destinations.length,
-        (i) =>
-            i < _renderedSelectedIconBytes.length
-                ? _renderedSelectedIconBytes[i]
-                : null,
-      );
+    widget.destinations.length,
+    (i) => i < _renderedSelectedIconBytes.length
+        ? _renderedSelectedIconBytes[i]
+        : null,
+  );
 
   /// Builds zero-size off-screen probe widgets so RepaintBoundary.toImage() works.
   Widget _buildIconProbes() {
@@ -388,16 +391,23 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           : const SizedBox.shrink();
 
       final h = widget.height ?? _intrinsicHeight ?? 50.0;
-      // Stack: the native view at normal height + zero-size off-screen probes
-      // that paint Widget icons so RepaintBoundary.toImage() works.
+      // When Widget icons are present, add invisible off-screen probes so that
+      // RepaintBoundary.toImage() can capture them. Wrap in IgnorePointer so
+      // they never intercept taps, and in Opacity(0.005) — intentionally
+      // non-zero so Flutter still paints the layer (Opacity(0) skips paint).
       final hasProbes = _hasWidgetIcons();
       if (hasProbes) {
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            SizedBox(height: h, child: platformView),
-            _buildIconProbes(),
-          ],
+        return SizedBox(
+          height: h,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Positioned.fill(child: platformView),
+              IgnorePointer(
+                child: Opacity(opacity: 0.005, child: _buildIconProbes()),
+              ),
+            ],
+          ),
         );
       }
       return SizedBox(height: h, child: platformView);
@@ -528,8 +538,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     final searchFlags = widget.destinations.map((e) => e.isSearch).toList();
     final badgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
 
-    final imageDataChanged = _renderedIconBytes.any((b) => b != null) ||
-        _renderedSelectedIconBytes.any((b) => b != null);
+    // Only true when _renderWidgetIcons produced NEW bytes (version bumped).
+    final imageDataChanged = _iconBytesVersion != _lastSentBytesVersion;
 
     if (_lastLabels?.join('|') != labels.join('|') ||
         _lastSymbols?.join('|') != symbols.join('|') ||
@@ -564,6 +574,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       _lastSelectedFileIcons = selectedFileIcons;
       _lastNetworkIcons = networkIcons;
       _lastSelectedNetworkIcons = selectedNetworkIcons;
+      _lastSentBytesVersion = _iconBytesVersion;
       _requestIntrinsicSize();
     }
 
