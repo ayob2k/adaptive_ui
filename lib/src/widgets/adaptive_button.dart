@@ -38,7 +38,8 @@ class AdaptiveButton extends StatelessWidget {
   }) : child = null,
        icon = null,
        iconColor = null,
-       sfSymbol = null;
+       sfSymbol = null,
+       _hasWidgetIcon = false;
 
   /// Creates an adaptive button with a custom child widget
   const AdaptiveButton.child({
@@ -58,7 +59,8 @@ class AdaptiveButton extends StatelessWidget {
        textColor = null,
        icon = null,
        iconColor = null,
-       sfSymbol = null;
+       sfSymbol = null,
+       _hasWidgetIcon = false;
 
   /// Creates an adaptive button with an icon
   const AdaptiveButton.icon({
@@ -78,7 +80,43 @@ class AdaptiveButton extends StatelessWidget {
   }) : label = null,
        textColor = null,
        child = null,
-       sfSymbol = null;
+       sfSymbol = null,
+       _hasWidgetIcon = false;
+
+  /// Creates an adaptive button with an arbitrary widget as the icon
+  ///
+  /// Use this when you need a custom image or widget as the button icon,
+  /// for example `SvgPicture.asset(...)` or any Flutter widget.
+  /// An optional [label] can be provided to display text next to the widget.
+  ///
+  /// Example:
+  /// ```dart
+  /// AdaptiveButton.widgetIcon(
+  ///   onPressed: () {},
+  ///   widgetIcon: SvgPicture.asset('assets/logo.svg', width: 20, height: 20),
+  ///   label: 'Sign in',
+  /// )
+  /// ```
+  const AdaptiveButton.widgetIcon({
+    super.key,
+    required this.onPressed,
+    required Widget widgetIcon,
+    this.label,
+    this.color,
+    this.textColor,
+    this.style = AdaptiveButtonStyle.filled,
+    this.size = AdaptiveButtonSize.medium,
+    this.padding,
+    this.borderRadius,
+    this.minSize,
+    this.enabled = true,
+    this.useSmoothRectangleBorder = true,
+    this.useNative = true,
+  }) : child = widgetIcon,
+       icon = null,
+       iconColor = null,
+       sfSymbol = null,
+       _hasWidgetIcon = true;
 
   /// Creates an adaptive button with a native SF Symbol icon (iOS only)
   const AdaptiveButton.sfSymbol({
@@ -98,7 +136,8 @@ class AdaptiveButton extends StatelessWidget {
        textColor = null,
        child = null,
        icon = null,
-       iconColor = null;
+       iconColor = null,
+       _hasWidgetIcon = false;
 
   /// The callback that is called when the button is tapped
   final VoidCallback? onPressed;
@@ -156,6 +195,11 @@ class AdaptiveButton extends StatelessWidget {
   /// Android always uses Material button regardless of this setting
   final bool useNative;
 
+  /// Internal flag: true when constructed via [AdaptiveButton.widgetIcon].
+  /// Distinguishes widgetIcon mode (widget + optional label) from child mode
+  /// (full content replacement with no label).
+  final bool _hasWidgetIcon;
+
   @override
   Widget build(BuildContext context) {
     // iOS 26+ - Use native iOS 26 button design (only if useNative is true)
@@ -174,6 +218,34 @@ class AdaptiveButton extends StatelessWidget {
             borderRadius: borderRadius,
             minSize: minSize,
             useSmoothRectangleBorder: useSmoothRectangleBorder,
+          ),
+        );
+      }
+
+      // widgetIcon mode - overlay widget (+ optional label) on native button
+      if (_hasWidgetIcon && child != null) {
+        final widgetIconContent = label != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  child!,
+                  const SizedBox(width: 8),
+                  Text(label!, style: TextStyle(color: textColor)),
+                ],
+              )
+            : child!;
+        return _wrapIOSButton(
+          IOS26Button.child(
+            onPressed: onPressed,
+            style: _mapToIOS26Style(style),
+            size: _mapToIOS26Size(size),
+            color: color,
+            enabled: enabled,
+            padding: padding,
+            borderRadius: borderRadius,
+            minSize: minSize,
+            useSmoothRectangleBorder: useSmoothRectangleBorder,
+            child: widgetIconContent,
           ),
         );
       }
@@ -283,6 +355,17 @@ class AdaptiveButton extends StatelessWidget {
           );
         } else if (icon != null) {
           buttonChild = Icon(icon, color: iconColor ?? filledTextColor);
+        } else if (_hasWidgetIcon && child != null) {
+          buttonChild = label != null
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    child!,
+                    const SizedBox(width: 8),
+                    Text(label!, style: TextStyle(color: filledTextColor)),
+                  ],
+                )
+              : child!;
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: filledTextColor),
@@ -322,6 +405,17 @@ class AdaptiveButton extends StatelessWidget {
           );
         } else if (icon != null) {
           buttonChild = Icon(icon, color: iconColor ?? effectiveColor);
+        } else if (_hasWidgetIcon && child != null) {
+          buttonChild = label != null
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    child!,
+                    const SizedBox(width: 8),
+                    Text(label!, style: TextStyle(color: effectiveColor)),
+                  ],
+                )
+              : child!;
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: effectiveColor),
@@ -356,6 +450,17 @@ class AdaptiveButton extends StatelessWidget {
           );
         } else if (icon != null) {
           buttonChild = Icon(icon, color: iconColor ?? textColorValue);
+        } else if (_hasWidgetIcon && child != null) {
+          buttonChild = label != null
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    child!,
+                    const SizedBox(width: 8),
+                    Text(label!, style: TextStyle(color: textColorValue)),
+                  ],
+                )
+              : child!;
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: textColorValue),
@@ -393,6 +498,17 @@ class AdaptiveButton extends StatelessWidget {
           );
         } else if (icon != null) {
           buttonChild = Icon(icon, color: iconColor ?? textColorValue);
+        } else if (_hasWidgetIcon && child != null) {
+          buttonChild = label != null
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    child!,
+                    const SizedBox(width: 8),
+                    Text(label!, style: TextStyle(color: textColorValue)),
+                  ],
+                )
+              : child!;
         } else if (child != null) {
           buttonChild = DefaultTextStyle(
             style: TextStyle(color: textColorValue),
@@ -432,6 +548,13 @@ class AdaptiveButton extends StatelessWidget {
       );
     } else if (icon != null) {
       buttonChild = Icon(icon, color: iconColor);
+    } else if (_hasWidgetIcon && child != null) {
+      buttonChild = label != null
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [child!, const SizedBox(width: 8), Text(label!)],
+            )
+          : child!;
     } else if (child != null) {
       buttonChild = child!;
     } else {
