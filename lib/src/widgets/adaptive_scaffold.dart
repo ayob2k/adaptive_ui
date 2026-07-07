@@ -249,7 +249,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       return _wrapWithDrawerIfNeeded(
         IOS26Scaffold(
           key: ValueKey(
-            'ios26_scaffold_${widget.bottomNavigationBar?.selectedIndex ?? 0}_${widget.body?.runtimeType.toString() ?? "empty"}',
+            'ios26_scaffold_${widget.body?.runtimeType.toString() ?? "empty"}',
           ),
           bottomNavigationBar: widget.bottomNavigationBar,
           title: widget.appBar?.title,
