@@ -340,7 +340,10 @@ class _IOS26ButtonState extends State<IOS26Button> {
       final isObscured = route != null && !route.isCurrent;
 
       if (isObscured) {
-        return SizedBox(height: _height, width: widget.minSize?.width);
+        // Show a Flutter fallback button instead of an empty placeholder so
+        // the button remains visible behind dialogs/drawers. It is wrapped in
+        // IgnorePointer so that all touches still reach the overlay on top.
+        return IgnorePointer(child: _buildFallbackButton());
       }
 
       final platformView = UiKitView(
