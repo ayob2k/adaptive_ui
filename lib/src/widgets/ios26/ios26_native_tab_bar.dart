@@ -385,7 +385,12 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
               creationParamsCodec: const StandardMessageCodec(),
               onPlatformViewCreated: _onCreated,
               gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
+                // EagerGestureRecognizer wins the arena immediately at
+                // touch-down, so the full touch sequence (down → up) is
+                // forwarded to UIKit in real time. TapGestureRecognizer only
+                // wins at touch-up, by which point UITabBar has already missed
+                // the touch and never fires tabBar(_:didSelect:).
+                Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
               },
             )
           : const SizedBox.shrink();
