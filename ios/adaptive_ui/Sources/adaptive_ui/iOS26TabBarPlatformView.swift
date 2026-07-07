@@ -32,6 +32,8 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
     private var currentSelectedFileIcons: [String] = []
     private var currentNetworkIcons: [String] = []
     private var currentSelectedNetworkIcons: [String] = []
+    private var currentImageData: [Data?] = []
+    private var currentSelectedImageData: [Data?] = []
     private var currentSearchFlags: [Bool] = []
     private var currentBadgeCounts: [Int?] = []
     private let imageCache = NSCache<NSString, UIImage>()
@@ -54,6 +56,8 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         var searchFlags: [Bool] = []
         var badgeCounts: [Int?] = []
         var spacerFlags: [Bool] = []
+        var imageData: [Data?] = []
+        var selectedImageData: [Data?] = []
         var selectedIndex: Int = 0
         var isDark: Bool = false
         var isRtl: Bool = false
@@ -88,6 +92,8 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             }
             if let n = dict["backgroundColor"] as? NSNumber { bg = Self.colorFromARGB(n.intValue) }
             if let m = dict["minimizeBehavior"] as? NSNumber { minimize = m.intValue }
+            imageData = Self.extractDataArray(dict["imageData"])
+            selectedImageData = Self.extractDataArray(dict["selectedImageData"])
         }
 
         super.init()
@@ -203,7 +209,18 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                     item.tag = i
 
                     if !self.configureRuntimeImages(for: item, index: i) {
-                        if i < assetIcons.count && !assetIcons[i].isEmpty {
+                        // Priority 1: Raw PNG bytes rendered from a Flutter Widget
+                        let rawData = (i < imageData.count) ? imageData[i] : nil
+                        let rawSelData = (i < selectedImageData.count) ? selectedImageData[i] : nil
+                        if let data = rawData, let rawImage = UIImage(data: data) {
+                            let resized = self.resizeImage(image: rawImage)
+                            image = resized.withRenderingMode(.alwaysTemplate)
+                            if let selData = rawSelData, let selRaw = UIImage(data: selData) {
+                                selectedImage = self.resizeImage(image: selRaw).withRenderingMode(.alwaysTemplate)
+                            } else {
+                                selectedImage = image
+                            }
+                        } else if i < assetIcons.count && !assetIcons[i].isEmpty {
                             let assetName = assetIcons[i]
                             let key = FlutterDartProject.lookupKey(forAsset: assetName)
                             let rawImageOriginal = UIImage(named: key)
@@ -271,7 +288,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
         let count = max(
             max(labels.count, symbols.count),
-            max(max(assetIcons.count, fileIcons.count), networkIcons.count)
+            max(max(assetIcons.count, fileIcons.count), max(networkIcons.count, imageData.count))
         )
         bar.items = buildItems(0..<count)
 
@@ -301,6 +318,8 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         self.currentSelectedFileIcons = selectedFileIcons
         self.currentNetworkIcons = networkIcons
         self.currentSelectedNetworkIcons = selectedNetworkIcons
+        self.currentImageData = imageData
+        self.currentSelectedImageData = selectedImageData
         self.currentSearchFlags = searchFlags
         self.currentBadgeCounts = badgeCounts
         // Apply minimize behavior if available
@@ -368,6 +387,8 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             let selectedFileIcons = (args["selectedFileIcons"] as? [String]) ?? []
             let networkIcons = (args["networkIcons"] as? [String]) ?? []
             let selectedNetworkIcons = (args["selectedNetworkIcons"] as? [String]) ?? []
+            let imageData = Self.extractDataArray(args["imageData"])
+            let selectedImageData = Self.extractDataArray(args["selectedImageData"])
             let searchFlags = (args["searchFlags"] as? [Bool]) ?? []
             let selectedIndex = (args["selectedIndex"] as? NSNumber)?.intValue ?? 0
             var badgeCounts: [Int?] = []
@@ -383,12 +404,14 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             self.currentSelectedFileIcons = selectedFileIcons
             self.currentNetworkIcons = networkIcons
             self.currentSelectedNetworkIcons = selectedNetworkIcons
+            self.currentImageData = imageData
+            self.currentSelectedImageData = selectedImageData
             self.currentSearchFlags = searchFlags
             self.currentBadgeCounts = badgeCounts
 
             let count = max(
                 max(labels.count, symbols.count),
-                max(max(assetIcons.count, fileIcons.count), networkIcons.count)
+                max(max(assetIcons.count, fileIcons.count), max(networkIcons.count, imageData.count))
             )
 
             let buildItems: (Range<Int>) -> [UITabBarItem] = { range in
@@ -421,7 +444,18 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                         item.tag = i
 
                         if !self.configureRuntimeImages(for: item, index: i) {
-                            if i < assetIcons.count && !assetIcons[i].isEmpty {
+                            // Priority 1: Raw PNG bytes rendered from a Flutter Widget
+                            let rawData = (i < imageData.count) ? imageData[i] : nil
+                            let rawSelData = (i < selectedImageData.count) ? selectedImageData[i] : nil
+                            if let data = rawData, let rawImage = UIImage(data: data) {
+                                let resized = self.resizeImage(image: rawImage)
+                                image = resized.withRenderingMode(.alwaysTemplate)
+                                if let selData = rawSelData, let selRaw = UIImage(data: selData) {
+                                    selectedImage = self.resizeImage(image: selRaw).withRenderingMode(.alwaysTemplate)
+                                } else {
+                                    selectedImage = image
+                                }
+                            } else if i < assetIcons.count && !assetIcons[i].isEmpty {
                                 let assetName = assetIcons[i]
                                 let key = FlutterDartProject.lookupKey(forAsset: assetName)
                                 let rawImageOriginal = UIImage(named: key)
@@ -630,7 +664,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         var items: [UITabBarItem] = []
         let itemCount = max(
             max(currentLabels.count, currentSymbols.count),
-            max(max(currentAssetIcons.count, currentFileIcons.count), currentNetworkIcons.count)
+            max(max(currentAssetIcons.count, currentFileIcons.count), max(currentNetworkIcons.count, currentImageData.count))
         )
         for i in 0..<itemCount {
             let title = i < currentLabels.count ? currentLabels[i] : nil
@@ -654,7 +688,18 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                 item.tag = i
 
                 if !configureRuntimeImages(for: item, index: i) {
-                    if i < currentAssetIcons.count && !currentAssetIcons[i].isEmpty {
+                    // Priority 1: Raw PNG bytes rendered from a Flutter Widget
+                    let rawData = (i < currentImageData.count) ? currentImageData[i] : nil
+                    let rawSelData = (i < currentSelectedImageData.count) ? currentSelectedImageData[i] : nil
+                    if let data = rawData, let rawImage = UIImage(data: data) {
+                        let resized = self.resizeImage(image: rawImage)
+                        image = resized.withRenderingMode(.alwaysTemplate)
+                        if let selData = rawSelData, let selRaw = UIImage(data: selData) {
+                            selectedImage = self.resizeImage(image: selRaw).withRenderingMode(.alwaysTemplate)
+                        } else {
+                            selectedImage = image
+                        }
+                    } else if i < currentAssetIcons.count && !currentAssetIcons[i].isEmpty {
                         if #available(iOS 26.0, *) {
                             let key = FlutterDartProject.lookupKey(forAsset: currentAssetIcons[i])
                             let rawImageOriginal = UIImage(named: key)
@@ -742,6 +787,15 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         let g = CGFloat((argb >> 8) & 0xFF) / 255.0
         let b = CGFloat(argb & 0xFF) / 255.0
         return UIColor(red: r, green: g, blue: b, alpha: a)
+    }
+
+    /// Converts a channel value (array of FlutterStandardTypedData or nil) to [Data?].
+    private static func extractDataArray(_ value: Any?) -> [Data?] {
+        guard let arr = value as? [Any?] else { return [] }
+        return arr.map { item -> Data? in
+            if let typed = item as? FlutterStandardTypedData { return typed.data }
+            return nil
+        }
     }
 
     private func runtimeFilePath(for index: Int, selected: Bool) -> String {

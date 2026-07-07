@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../adaptive_scaffold.dart';
 
@@ -64,15 +67,113 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   TabBarMinimizeBehavior? _lastMinimizeBehavior;
   bool? _lastHidden;
 
+  // Off-screen rendering for Widget icons
+  final List<GlobalKey> _iconProbeKeys = [];
+  final List<GlobalKey> _selectedIconProbeKeys = [];
+  List<Uint8List?> _renderedIconBytes = [];
+  List<Uint8List?> _renderedSelectedIconBytes = [];
+  bool _widgetRenderScheduled = false;
+
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
   bool get _isRtl => Directionality.of(context) == TextDirection.rtl;
   Color? get _effectiveTint =>
       widget.tint ?? CupertinoTheme.of(context).primaryColor;
 
+  bool _hasWidgetIcons() => widget.destinations.any(
+        (d) => d.icon is Widget || d.selectedIcon is Widget,
+      );
+
+  void _initIconProbes() {
+    final count = widget.destinations.length;
+    _iconProbeKeys.clear();
+    _selectedIconProbeKeys.clear();
+    _renderedIconBytes = List.filled(count, null);
+    _renderedSelectedIconBytes = List.filled(count, null);
+    for (int i = 0; i < count; i++) {
+      _iconProbeKeys.add(GlobalKey());
+      _selectedIconProbeKeys.add(GlobalKey());
+    }
+  }
+
+  void _scheduleWidgetRender() {
+    if (_widgetRenderScheduled) return;
+    _widgetRenderScheduled = true;
+    // Two frames: first to layout probes, second to paint them
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _renderWidgetIcons();
+      });
+    });
+  }
+
+  Future<void> _renderWidgetIcons() async {
+    _widgetRenderScheduled = false;
+    bool anyRendered = false;
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+
+    for (int i = 0; i < widget.destinations.length; i++) {
+      final dest = widget.destinations[i];
+
+      if (dest.icon is Widget) {
+        final bytes = await _captureWidget(_iconProbeKeys[i], pixelRatio);
+        if (bytes != null && bytes != _renderedIconBytes[i]) {
+          _renderedIconBytes[i] = bytes;
+          anyRendered = true;
+        }
+      }
+
+      final selIcon = dest.selectedIcon ?? dest.icon;
+      if (selIcon is Widget) {
+        final key = dest.selectedIcon is Widget
+            ? _selectedIconProbeKeys[i]
+            : _iconProbeKeys[i];
+        final bytes = await _captureWidget(key, pixelRatio);
+        if (bytes != null && bytes != _renderedSelectedIconBytes[i]) {
+          _renderedSelectedIconBytes[i] = bytes;
+          anyRendered = true;
+        }
+      }
+    }
+
+    if (anyRendered && mounted) {
+      await _syncPropsToNativeIfNeeded();
+    }
+  }
+
+  Future<Uint8List?> _captureWidget(GlobalKey key, double pixelRatio) async {
+    try {
+      final boundary =
+          key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: pixelRatio);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initIconProbes();
+    if (_hasWidgetIcons()) {
+      _scheduleWidgetRender();
+    }
+  }
+
   @override
   void didUpdateWidget(covariant IOS26NativeTabBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Re-initialise probes when destination count changes
+    if (oldWidget.destinations.length != widget.destinations.length) {
+      _initIconProbes();
+    }
+    if (_hasWidgetIcons()) {
+      _scheduleWidgetRender();
+    }
     _syncPropsToNativeIfNeeded();
   }
 
@@ -166,6 +267,68 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       .map((e) => _extractNetworkUrl(e.selectedIcon ?? e.icon))
       .toList();
 
+  /// Returns pre-rendered PNG bytes for Widget icons (index-aligned, null for non-widget icons).
+  List<Uint8List?> _mapImageData() => List.generate(
+        widget.destinations.length,
+        (i) => i < _renderedIconBytes.length ? _renderedIconBytes[i] : null,
+      );
+
+  List<Uint8List?> _mapSelectedImageData() => List.generate(
+        widget.destinations.length,
+        (i) =>
+            i < _renderedSelectedIconBytes.length
+                ? _renderedSelectedIconBytes[i]
+                : null,
+      );
+
+  /// Builds zero-size off-screen probe widgets so RepaintBoundary.toImage() works.
+  Widget _buildIconProbes() {
+    final probes = <Widget>[];
+    for (int i = 0; i < widget.destinations.length; i++) {
+      final dest = widget.destinations[i];
+
+      if (dest.icon is Widget) {
+        probes.add(
+          SizedBox(
+            width: 0,
+            height: 0,
+            child: OverflowBox(
+              minWidth: 24,
+              maxWidth: 24,
+              minHeight: 24,
+              maxHeight: 24,
+              child: RepaintBoundary(
+                key: _iconProbeKeys[i],
+                child: dest.icon as Widget,
+              ),
+            ),
+          ),
+        );
+      }
+
+      if (dest.selectedIcon is Widget) {
+        probes.add(
+          SizedBox(
+            width: 0,
+            height: 0,
+            child: OverflowBox(
+              minWidth: 24,
+              maxWidth: 24,
+              minHeight: 24,
+              maxHeight: 24,
+              child: RepaintBoundary(
+                key: _selectedIconProbeKeys[i],
+                child: dest.selectedIcon as Widget,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+    if (probes.isEmpty) return const SizedBox.shrink();
+    return Stack(children: probes);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb && Platform.isIOS) {
@@ -184,6 +347,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           .map((e) => e.addSpacerAfter)
           .toList();
 
+      final imageData = _mapImageData();
+      final selectedImageData = _mapSelectedImageData();
+
       final creationParams = <String, dynamic>{
         'labels': labels,
         'sfSymbols': symbols,
@@ -193,6 +359,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'selectedFileIcons': selectedFileIcons,
         'networkIcons': networkIcons,
         'selectedNetworkIcons': selectedNetworkIcons,
+        'imageData': imageData,
+        'selectedImageData': selectedImageData,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
         'spacerFlags': spacerFlags,
@@ -220,6 +388,18 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           : const SizedBox.shrink();
 
       final h = widget.height ?? _intrinsicHeight ?? 50.0;
+      // Stack: the native view at normal height + zero-size off-screen probes
+      // that paint Widget icons so RepaintBoundary.toImage() works.
+      final hasProbes = _hasWidgetIcons();
+      if (hasProbes) {
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            SizedBox(height: h, child: platformView),
+            _buildIconProbes(),
+          ],
+        );
+      }
       return SizedBox(height: h, child: platformView);
     }
 
@@ -343,8 +523,13 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     final selectedFileIcons = _mapSelectedFileIcons();
     final networkIcons = _mapNetworkIcons();
     final selectedNetworkIcons = _mapSelectedNetworkIcons();
+    final imageData = _mapImageData();
+    final selectedImageData = _mapSelectedImageData();
     final searchFlags = widget.destinations.map((e) => e.isSearch).toList();
     final badgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
+
+    final imageDataChanged = _renderedIconBytes.any((b) => b != null) ||
+        _renderedSelectedIconBytes.any((b) => b != null);
 
     if (_lastLabels?.join('|') != labels.join('|') ||
         _lastSymbols?.join('|') != symbols.join('|') ||
@@ -354,7 +539,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         _lastSelectedFileIcons?.join('|') != selectedFileIcons.join('|') ||
         _lastNetworkIcons?.join('|') != networkIcons.join('|') ||
         _lastSelectedNetworkIcons?.join('|') !=
-            selectedNetworkIcons.join('|')) {
+            selectedNetworkIcons.join('|') ||
+        imageDataChanged) {
       await ch.invokeMethod('setItems', {
         'labels': labels,
         'sfSymbols': symbols,
@@ -364,6 +550,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'selectedFileIcons': selectedFileIcons,
         'networkIcons': networkIcons,
         'selectedNetworkIcons': selectedNetworkIcons,
+        'imageData': imageData,
+        'selectedImageData': selectedImageData,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
         'selectedIndex': widget.selectedIndex,
@@ -466,6 +654,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     final selectedFileIcons = _mapSelectedFileIcons();
     final networkIcons = _mapNetworkIcons();
     final selectedNetworkIcons = _mapSelectedNetworkIcons();
+    final imageData = _mapImageData();
+    final selectedImageData = _mapSelectedImageData();
     final searchFlags = widget.destinations.map((e) => e.isSearch).toList();
     final badgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
 
@@ -479,6 +669,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'selectedFileIcons': selectedFileIcons,
         'networkIcons': networkIcons,
         'selectedNetworkIcons': selectedNetworkIcons,
+        'imageData': imageData,
+        'selectedImageData': selectedImageData,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
         'selectedIndex': widget.selectedIndex,
