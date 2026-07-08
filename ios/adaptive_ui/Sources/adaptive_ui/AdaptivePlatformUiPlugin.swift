@@ -11,6 +11,9 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
             iOS26NativeTabBarManager.shared.setup(messenger: registrar.messenger())
         }
 
+        // Initialize iOS 26 Loader Manager (native UIViewController presentation)
+        iOS26LoaderManager.shared.setup(messenger: registrar.messenger())
+
         // Register iOS 26 Button platform view factory
         let ios26ButtonFactory = iOS26ButtonViewFactory(messenger: registrar.messenger())
         registrar.register(

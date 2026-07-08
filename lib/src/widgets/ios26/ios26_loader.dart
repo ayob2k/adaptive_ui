@@ -3,11 +3,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Native iOS 26 loader widget with Liquid Glass card design.
+/// Native iOS 26 inline loader widget.
 ///
-/// Renders a `UIActivityIndicatorView` inside a `UIGlassEffect` card via a
-/// platform view. Use this directly when you need the raw iOS 26 component;
-/// prefer [AdaptiveLoader] for cross-platform code.
+/// Renders a `UIActivityIndicatorView` inside a frosted glass card via a
+/// `UiKitView`. This widget is for **inline use** (embedded in the widget
+/// tree). For a glass popup dialog, use [AdaptiveLoader.show] instead — that
+/// presents a real `UIViewController` with `UIGlassEffect` which gives the
+/// authentic Liquid Glass look.
 ///
 /// The card sizes itself to the [size] parameter. When [message] is provided
 /// the default height is taller to accommodate the label below the spinner.

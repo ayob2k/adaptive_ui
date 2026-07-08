@@ -81,16 +81,23 @@ class iOS26LoaderPlatformView: NSObject, FlutterPlatformView {
     private func buildCard(message: String?, indicatorColor: UIColor?) {
         // Glass card — fills the platform view frame exactly so the Dart side
         // controls the card's outer size via the SizedBox that wraps UiKitView.
-        let glassView: UIVisualEffectView
-        if #available(iOS 26.0, *) {
-            glassView = UIVisualEffectView(effect: UIGlassEffect())
+        //
+        // Note: UIGlassEffect requires a native UIKit view hierarchy behind it
+        // to render correctly. Inside a Flutter UiKitView the compositing layer
+        // is different, so we use UIBlurEffect (still looks great inline).
+        // UIGlassEffect is used in iOS26LoaderManager which presents a real
+        // UIViewController, giving it the full native hierarchy it needs.
+        let blurStyle: UIBlurEffect.Style
+        if #available(iOS 13.0, *) {
+            blurStyle = isDark ? .systemThinMaterialDark : .systemThinMaterialLight
         } else {
-            glassView = UIVisualEffectView(
-                effect: UIBlurEffect(style: .systemUltraThinMaterial)
-            )
+            blurStyle = isDark ? .dark : .light
         }
+        let glassView = UIVisualEffectView(effect: UIBlurEffect(style: blurStyle))
         glassView.layer.cornerRadius = 20
         glassView.clipsToBounds = true
+        glassView.layer.borderWidth = 0.5
+        glassView.layer.borderColor = UIColor.white.withAlphaComponent(0.35).cgColor
         glassView.translatesAutoresizingMaskIntoConstraints = false
         _containerView.addSubview(glassView)
 
