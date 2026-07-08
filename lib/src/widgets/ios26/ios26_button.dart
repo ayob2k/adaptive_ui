@@ -171,6 +171,12 @@ class _IOS26ButtonState extends State<IOS26Button> {
   late final MethodChannel _channel;
   bool? _lastIsDark;
 
+  // Tracks whether a modal route (bottom sheet, dialog, new page) is
+  // currently on top of this widget's route. When true, the native UiKitView
+  // is removed from the tree so it cannot render above Flutter overlays.
+  bool _routeIsObscured = false;
+  ModalRoute<dynamic>? _observedRoute;
+
   @override
   void initState() {
     super.initState();
@@ -183,12 +189,37 @@ class _IOS26ButtonState extends State<IOS26Button> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncBrightnessIfNeeded();
+    _updateRouteObservation();
   }
 
   @override
   void dispose() {
+    _observedRoute?.secondaryAnimation?.removeListener(_onSecondaryAnimationChanged);
     _channel.setMethodCallHandler(null);
     super.dispose();
+  }
+
+  // Subscribes to the nearest modal route's secondaryAnimation so we are
+  // notified whenever a new route is pushed on top of (or popped from) this
+  // widget's route. The secondaryAnimation value is > 0 whenever something
+  // is on top, which is exactly when we must suppress the native UIView.
+  void _updateRouteObservation() {
+    final newRoute = ModalRoute.of(context);
+    if (newRoute == _observedRoute) return;
+    _observedRoute?.secondaryAnimation?.removeListener(_onSecondaryAnimationChanged);
+    _observedRoute = newRoute;
+    _observedRoute?.secondaryAnimation?.addListener(_onSecondaryAnimationChanged);
+    _syncObscuredState();
+  }
+
+  void _onSecondaryAnimationChanged() => _syncObscuredState();
+
+  void _syncObscuredState() {
+    final value = _observedRoute?.secondaryAnimation?.value ?? 0.0;
+    final isObscured = value > 0.0;
+    if (isObscured != _routeIsObscured) {
+      setState(() => _routeIsObscured = isObscured);
+    }
   }
 
   Future<void> _syncBrightnessIfNeeded() async {
@@ -337,31 +368,40 @@ class _IOS26ButtonState extends State<IOS26Button> {
   Widget build(BuildContext context) {
     // Only use native implementation on iOS
     if (!kIsWeb && Platform.isIOS) {
-      final platformView = UiKitView(
-        viewType: 'adaptive_ui/ios26_button',
-        creationParams: _buildCreationParams(),
-        creationParamsCodec: const StandardMessageCodec(),
-      );
-
       if (widget.isChildMode) {
         // The child is a non-positioned Stack member so it drives the Stack's
         // size. Positioned.fill then stretches the native view to match,
         // meaning no manual SizedBox is needed — the button adapts to its child.
-        // alignment centers the child within the Stack by default; the Stack
-        // itself still sizes to the child's natural dimensions.
+        // When a route is on top (bottom sheet, dialog, new page), the native
+        // UiKitView is omitted so it cannot bleed above Flutter's overlay layer.
         return Stack(
           alignment: widget.alignment,
           children: [
-            Positioned.fill(child: platformView),
+            if (!_routeIsObscured)
+              Positioned.fill(
+                child: UiKitView(
+                  viewType: 'adaptive_ui/ios26_button',
+                  creationParams: _buildCreationParams(),
+                  creationParamsCodec: const StandardMessageCodec(),
+                ),
+              ),
             IgnorePointer(child: widget.child!),
           ],
         );
       }
 
+      // For label / SF-symbol mode, swap the native view for a transparent
+      // placeholder of equal size while a route sits on top of this one.
       return SizedBox(
         width: widget.minSize?.width,
         height: _height,
-        child: platformView,
+        child: _routeIsObscured
+            ? null
+            : UiKitView(
+                viewType: 'adaptive_ui/ios26_button',
+                creationParams: _buildCreationParams(),
+                creationParamsCodec: const StandardMessageCodec(),
+              ),
       );
     }
 
