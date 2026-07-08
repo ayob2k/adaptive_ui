@@ -73,5 +73,12 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
             ios26BlurViewFactory,
             withId: "adaptive_ui/ios26_blur_view"
         )
+
+        // Register iOS 26 Loader platform view factory
+        let ios26LoaderFactory = iOS26LoaderViewFactory(messenger: registrar.messenger())
+        registrar.register(
+            ios26LoaderFactory,
+            withId: "adaptive_ui/ios26_loader"
+        )
     }
 }

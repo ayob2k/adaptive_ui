@@ -71,7 +71,8 @@ class IOS26Button extends StatefulWidget {
     this.useSmoothRectangleBorder = true,
   }) : child = null,
        isChildMode = false,
-       sfSymbol = null;
+       sfSymbol = null,
+       alignment = Alignment.center;
 
   /// Creates an iOS 26 style button with a custom child widget
   /// The child will be overlaid on top of the native button background
@@ -87,6 +88,7 @@ class IOS26Button extends StatefulWidget {
     this.borderRadius,
     this.minSize,
     this.useSmoothRectangleBorder = true,
+    this.alignment = Alignment.center,
   }) : label = '',
        textColor = null,
        isChildMode = true,
@@ -108,7 +110,8 @@ class IOS26Button extends StatefulWidget {
   }) : label = '',
        textColor = null,
        child = null,
-       isChildMode = false;
+       isChildMode = false,
+       alignment = Alignment.center;
 
   /// The callback that is called when the button is tapped
   final VoidCallback? onPressed;
@@ -153,6 +156,10 @@ class IOS26Button extends StatefulWidget {
   /// When false, uses perfectly circular/capsule shape
   /// Default is true for smooth rectangle, set to false for circular
   final bool useSmoothRectangleBorder;
+
+  /// How the child is aligned within the button background (child mode only).
+  /// Defaults to [Alignment.center].
+  final AlignmentGeometry alignment;
 
   @override
   State<IOS26Button> createState() => _IOS26ButtonState();
@@ -340,7 +347,10 @@ class _IOS26ButtonState extends State<IOS26Button> {
         // The child is a non-positioned Stack member so it drives the Stack's
         // size. Positioned.fill then stretches the native view to match,
         // meaning no manual SizedBox is needed — the button adapts to its child.
+        // alignment centers the child within the Stack by default; the Stack
+        // itself still sizes to the child's natural dimensions.
         return Stack(
+          alignment: widget.alignment,
           children: [
             Positioned.fill(child: platformView),
             IgnorePointer(child: widget.child!),

@@ -38,7 +38,8 @@ class AdaptiveButton extends StatelessWidget {
   }) : child = null,
        icon = null,
        iconColor = null,
-       sfSymbol = null;
+       sfSymbol = null,
+       alignment = Alignment.center;
 
   /// Creates an adaptive button with a custom child widget
   const AdaptiveButton.child({
@@ -54,6 +55,7 @@ class AdaptiveButton extends StatelessWidget {
     this.enabled = true,
     this.useSmoothRectangleBorder = true,
     this.useNative = true,
+    this.alignment = Alignment.center,
   }) : label = null,
        textColor = null,
        icon = null,
@@ -78,7 +80,8 @@ class AdaptiveButton extends StatelessWidget {
   }) : label = null,
        textColor = null,
        child = null,
-       sfSymbol = null;
+       sfSymbol = null,
+       alignment = Alignment.center;
 
   /// Creates an adaptive button with a native SF Symbol icon (iOS only)
   const AdaptiveButton.sfSymbol({
@@ -98,7 +101,8 @@ class AdaptiveButton extends StatelessWidget {
        textColor = null,
        child = null,
        icon = null,
-       iconColor = null;
+       iconColor = null,
+       alignment = Alignment.center;
 
   /// The callback that is called when the button is tapped
   final VoidCallback? onPressed;
@@ -156,6 +160,10 @@ class AdaptiveButton extends StatelessWidget {
   /// Android always uses Material button regardless of this setting
   final bool useNative;
 
+  /// How the child is aligned within the button background (child mode only).
+  /// Defaults to [Alignment.center].
+  final AlignmentGeometry alignment;
+
   @override
   Widget build(BuildContext context) {
     // iOS 26+ - Use native iOS 26 button design (only if useNative is true)
@@ -191,6 +199,7 @@ class AdaptiveButton extends StatelessWidget {
             borderRadius: borderRadius,
             minSize: minSize,
             useSmoothRectangleBorder: useSmoothRectangleBorder,
+            alignment: alignment,
             child: child!,
           ),
         );
