@@ -330,41 +330,28 @@ class _IOS26ButtonState extends State<IOS26Button> {
   Widget build(BuildContext context) {
     // Only use native implementation on iOS
     if (!kIsWeb && Platform.isIOS) {
-      // UiKitView renders in the native UIKit layer, which sits above Flutter
-      // overlays (bottom sheets, dialogs, etc.). When a modal route is on top,
-      // swap the native view for an invisible placeholder so that native
-      // shadows and glass effects don't bleed through Flutter overlays.
-      // ModalRoute notifies its dependents via _ModalScopeStatus (an
-      // InheritedWidget), so no extra setup is required.
-      final route = ModalRoute.of(context);
-      final isObscured = route != null && !route.isCurrent;
-
-      if (isObscured) {
-        // Show a Flutter fallback button instead of an empty placeholder so
-        // the button remains visible behind dialogs/drawers. It is wrapped in
-        // IgnorePointer so that all touches still reach the overlay on top.
-        return IgnorePointer(child: _buildFallbackButton());
-      }
-
       final platformView = UiKitView(
         viewType: 'adaptive_ui/ios26_button',
         creationParams: _buildCreationParams(),
         creationParamsCodec: const StandardMessageCodec(),
       );
 
-      final buttonContent = widget.isChildMode
-          ? Stack(
-              children: [
-                Positioned.fill(child: platformView),
-                Center(child: IgnorePointer(child: widget.child!)),
-              ],
-            )
-          : platformView;
+      if (widget.isChildMode) {
+        // The child is a non-positioned Stack member so it drives the Stack's
+        // size. Positioned.fill then stretches the native view to match,
+        // meaning no manual SizedBox is needed — the button adapts to its child.
+        return Stack(
+          children: [
+            Positioned.fill(child: platformView),
+            IgnorePointer(child: widget.child!),
+          ],
+        );
+      }
 
       return SizedBox(
         width: widget.minSize?.width,
         height: _height,
-        child: buttonContent,
+        child: platformView,
       );
     }
 
