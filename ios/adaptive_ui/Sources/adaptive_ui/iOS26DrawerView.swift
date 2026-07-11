@@ -29,7 +29,7 @@ private class DrawerGlassView: UIView {
         }
     }
 
-    var tintColor: UIColor? {
+    var glassTintColor: UIColor? {
         didSet { applyTint() }
     }
 
@@ -38,7 +38,7 @@ private class DrawerGlassView: UIView {
     init(frame: CGRect, isDark: Bool, blurStyleName: String, tintColor: UIColor?) {
         self.isDark = isDark
         self.blurStyleName = blurStyleName
-        self.tintColor = tintColor
+        self.glassTintColor = tintColor
 
         blurView = UIVisualEffectView(effect: UIBlurEffect(style: DrawerGlassView.parseBlurStyle(blurStyleName)))
         blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -110,7 +110,7 @@ private class DrawerGlassView: UIView {
         tintView?.removeFromSuperview()
         tintView = nil
 
-        guard let tc = tintColor else { return }
+        guard let tc = glassTintColor else { return }
         let tv = UIView(frame: bounds)
         tv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         tv.backgroundColor = tc.withAlphaComponent(0.18)
@@ -188,9 +188,9 @@ class iOS26DrawerPlatformView: NSObject, FlutterPlatformView {
             result(nil)
         case "setTintColor":
             if let tint = args["tintColor"] as? NSNumber {
-                glassView.tintColor = UIColor(argb: tint.intValue)
+                glassView.glassTintColor = UIColor(argb: tint.intValue)
             } else {
-                glassView.tintColor = nil
+                glassView.glassTintColor = nil
             }
             result(nil)
         default:
