@@ -177,6 +177,14 @@ class _IOS26ButtonState extends State<IOS26Button> {
   bool _routeIsObscured = false;
   ModalRoute<dynamic>? _observedRoute;
 
+  // Scroll position of the nearest ancestor Scrollable, used to trigger
+  // a rebuild when scrolling stops.  Flutter's hybrid composition creates
+  // a separate "overlay" render surface for content above the UiKitView
+  // (e.g. the AppBar).  That overlay can go stale when the platform view
+  // scrolls off-screen and back; calling setState after scroll ends forces
+  // Flutter to re-evaluate and repaint the overlay surface.
+  ScrollPosition? _scrollPosition;
+
   @override
   void initState() {
     super.initState();
@@ -190,41 +198,81 @@ class _IOS26ButtonState extends State<IOS26Button> {
     super.didChangeDependencies();
     _syncBrightnessIfNeeded();
     _updateRouteObservation();
+    _updateScrollObservation();
   }
 
   @override
   void dispose() {
+    _scrollPosition?.isScrollingNotifier.removeListener(_onScrollingChanged);
     _observedRoute?.secondaryAnimation?.removeListener(
       _onSecondaryAnimationChanged,
     );
+    _observedRoute?.animation?.removeListener(_onRouteAnimationChanged);
     _channel.setMethodCallHandler(null);
     super.dispose();
   }
+
+  // ── Route observation ────────────────────────────────────────────────────
 
   // Subscribes to the nearest modal route's secondaryAnimation so we are
   // notified whenever a new route is pushed on top of (or popped from) this
   // widget's route. The secondaryAnimation value is > 0 whenever something
   // is on top, which is exactly when we must suppress the native UIView.
+  //
+  // Also subscribes to the route's primary animation so we can trigger an
+  // overlay refresh once the page-entry transition finishes.
   void _updateRouteObservation() {
     final newRoute = ModalRoute.of(context);
     if (newRoute == _observedRoute) return;
     _observedRoute?.secondaryAnimation?.removeListener(
       _onSecondaryAnimationChanged,
     );
+    _observedRoute?.animation?.removeListener(_onRouteAnimationChanged);
     _observedRoute = newRoute;
     _observedRoute?.secondaryAnimation?.addListener(
       _onSecondaryAnimationChanged,
     );
+    _observedRoute?.animation?.addListener(_onRouteAnimationChanged);
     _syncObscuredState();
   }
 
   void _onSecondaryAnimationChanged() => _syncObscuredState();
+
+  // When the page-entry animation finishes, refresh the platform-view overlay
+  // by scheduling a rebuild.  The entry animation can leave the Flutter overlay
+  // surface (which renders the AppBar) in a stale state; rebuilding forces
+  // Flutter to re-composite the overlay with up-to-date content.
+  void _onRouteAnimationChanged() {
+    if (_observedRoute?.animation?.status == AnimationStatus.completed &&
+        mounted) {
+      setState(() {});
+    }
+  }
 
   void _syncObscuredState() {
     final value = _observedRoute?.secondaryAnimation?.value ?? 0.0;
     final isObscured = value > 0.0;
     if (isObscured != _routeIsObscured) {
       setState(() => _routeIsObscured = isObscured);
+    }
+  }
+
+  // ── Scroll observation ───────────────────────────────────────────────────
+
+  void _updateScrollObservation() {
+    final newPosition = Scrollable.maybeOf(context)?.position;
+    if (newPosition == _scrollPosition) return;
+    _scrollPosition?.isScrollingNotifier.removeListener(_onScrollingChanged);
+    _scrollPosition = newPosition;
+    _scrollPosition?.isScrollingNotifier.addListener(_onScrollingChanged);
+  }
+
+  // When scrolling stops, refresh the platform-view overlay.  While the
+  // UiKitView is scrolled off-screen the overlay surface for the AppBar can
+  // become stale; the rebuild re-composites it with correct content.
+  void _onScrollingChanged() {
+    if (!(_scrollPosition?.isScrollingNotifier.value ?? true) && mounted) {
+      setState(() {});
     }
   }
 
@@ -370,14 +418,6 @@ class _IOS26ButtonState extends State<IOS26Button> {
     }
   }
 
-  Widget _buildPlatformView() => ClipRect(
-    child: UiKitView(
-      viewType: 'adaptive_ui/ios26_button',
-      creationParams: _buildCreationParams(),
-      creationParamsCodec: const StandardMessageCodec(),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     // Only use native implementation on iOS
@@ -386,16 +426,19 @@ class _IOS26ButtonState extends State<IOS26Button> {
         // The child is a non-positioned Stack member so it drives the Stack's
         // size. Positioned.fill then stretches the native view to match,
         // meaning no manual SizedBox is needed — the button adapts to its child.
-        //
-        // ClipRect ensures Flutter communicates the correct clip rect to the
-        // platform view system so scroll views and Scaffold body boundaries
-        // are respected. When a route is on top (bottom sheet, dialog, new
-        // page), the UiKitView is omitted entirely so it cannot render above
-        // Flutter's overlay layer.
+        // When a route is on top (bottom sheet, dialog, new page), the native
+        // UiKitView is omitted so it cannot bleed above Flutter's overlay layer.
         return Stack(
           alignment: widget.alignment,
           children: [
-            if (!_routeIsObscured) Positioned.fill(child: _buildPlatformView()),
+            if (!_routeIsObscured)
+              Positioned.fill(
+                child: UiKitView(
+                  viewType: 'adaptive_ui/ios26_button',
+                  creationParams: _buildCreationParams(),
+                  creationParamsCodec: const StandardMessageCodec(),
+                ),
+              ),
             IgnorePointer(child: widget.child!),
           ],
         );
@@ -403,13 +446,16 @@ class _IOS26ButtonState extends State<IOS26Button> {
 
       // For label / SF-symbol mode, swap the native view for a transparent
       // placeholder of equal size while a route sits on top of this one.
-      // ClipRect propagates the ancestor scroll/scaffold clip rect into the
-      // platform view layer so the UIView is hidden when scrolled behind the
-      // AppBar or BottomBar.
       return SizedBox(
         width: widget.minSize?.width,
         height: _height,
-        child: _routeIsObscured ? null : _buildPlatformView(),
+        child: _routeIsObscured
+            ? null
+            : UiKitView(
+                viewType: 'adaptive_ui/ios26_button',
+                creationParams: _buildCreationParams(),
+                creationParamsCodec: const StandardMessageCodec(),
+              ),
       );
     }
 
