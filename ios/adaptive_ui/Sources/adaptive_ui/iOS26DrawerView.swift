@@ -1,36 +1,56 @@
 import Flutter
 import UIKit
 
-/// A UIView subclass that renders the iOS 26 Liquid Glass background for
-/// the adaptive drawer: native UIVisualEffectView blur, a specular highlight
-/// gradient, and a right-edge separator line.
+// MARK: - DrawerGlassView
+
+/// The native UIView that provides the iOS 26 Liquid Glass appearance for the drawer.
+/// Layers (bottom → top):
+///   1. UIVisualEffectView  — live blur (UIKit reads from whatever is behind the window)
+///   2. Optional tint layer — colour overlay at low opacity
+///   3. Specular gradient   — top highlight for the "glossy" sheen
+///   4. Right-edge hairline — glass panel separator
 private class DrawerGlassView: UIView {
 
     private let blurView: UIVisualEffectView
     private let specularLayer: CAGradientLayer
+    private var tintView: UIView?
     private let separatorView: UIView
 
+    // MARK: Dynamic properties
+
     var isDark: Bool = false {
-        didSet { updateAppearance() }
+        didSet { guard isDark != oldValue else { return }; applyTheme() }
     }
 
-    init(frame: CGRect, isDark: Bool) {
-        self.isDark = isDark
+    var blurStyleName: String = "systemUltraThinMaterial" {
+        didSet {
+            guard blurStyleName != oldValue else { return }
+            blurView.effect = UIBlurEffect(style: DrawerGlassView.parseBlurStyle(blurStyleName))
+        }
+    }
 
-        // Blur background (UIVisualEffectView — the core of Liquid Glass)
-        blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
+    var tintColor: UIColor? {
+        didSet { applyTint() }
+    }
+
+    // MARK: Init
+
+    init(frame: CGRect, isDark: Bool, blurStyleName: String, tintColor: UIColor?) {
+        self.isDark = isDark
+        self.blurStyleName = blurStyleName
+        self.tintColor = tintColor
+
+        blurView = UIVisualEffectView(effect: UIBlurEffect(style: DrawerGlassView.parseBlurStyle(blurStyleName)))
         blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         if #available(iOS 13.0, *) {
             blurView.overrideUserInterfaceStyle = isDark ? .dark : .light
         }
 
-        // Specular highlight gradient layer (top-heavy, glossy feel)
         specularLayer = CAGradientLayer()
         specularLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
-        specularLayer.endPoint   = CGPoint(x: 0.5, y: 0.65)
-        specularLayer.locations  = [0.0, 0.35, 1.0]
+        specularLayer.endPoint   = CGPoint(x: 0.5, y: 0.6)
+        specularLayer.locations  = [0.0, 0.25, 0.7, 1.0]
 
-        // Right-edge separator — mimics the glass panel edge
         separatorView = UIView()
         separatorView.autoresizingMask = [.flexibleHeight, .flexibleLeftMargin]
 
@@ -41,53 +61,83 @@ private class DrawerGlassView: UIView {
         layer.addSublayer(specularLayer)
         addSubview(separatorView)
 
-        updateAppearance()
+        applyTint()
+        applyTheme()
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
+    required init?(coder: NSCoder) { fatalError() }
+
+    // MARK: Layout
 
     override func layoutSubviews() {
         super.layoutSubviews()
         blurView.frame = bounds
+        tintView?.frame = bounds
         specularLayer.frame = bounds
-        separatorView.frame = CGRect(
-            x: bounds.maxX - 0.5,
-            y: 0,
-            width: 0.5,
-            height: bounds.height
-        )
+        separatorView.frame = CGRect(x: bounds.maxX - 0.5, y: 0, width: 0.5, height: bounds.height)
     }
 
-    private func updateAppearance() {
-        // Update blur darkness
+    // MARK: Appearance
+
+    private func applyTheme() {
         if #available(iOS 13.0, *) {
             blurView.overrideUserInterfaceStyle = isDark ? .dark : .light
         }
 
-        // Specular colours: stronger in light mode, subtle in dark mode
+        // In light mode the specular is very bright (iOS 26 glossy glass).
+        // In dark mode it is subtler so it doesn't look washed out.
         specularLayer.colors = isDark
             ? [
-                UIColor.white.withAlphaComponent(0.07).cgColor,
-                UIColor.white.withAlphaComponent(0.025).cgColor,
+                UIColor.white.withAlphaComponent(0.12).cgColor,
+                UIColor.white.withAlphaComponent(0.05).cgColor,
+                UIColor.white.withAlphaComponent(0.01).cgColor,
                 UIColor.clear.cgColor,
               ]
             : [
-                UIColor.white.withAlphaComponent(0.26).cgColor,
-                UIColor.white.withAlphaComponent(0.09).cgColor,
+                UIColor.white.withAlphaComponent(0.45).cgColor,
+                UIColor.white.withAlphaComponent(0.18).cgColor,
+                UIColor.white.withAlphaComponent(0.04).cgColor,
                 UIColor.clear.cgColor,
               ]
 
-        // Separator line — bright in light mode, softly visible in dark mode
         separatorView.backgroundColor = isDark
-            ? UIColor.white.withAlphaComponent(0.18)
-            : UIColor.white.withAlphaComponent(0.62)
+            ? UIColor.white.withAlphaComponent(0.20)
+            : UIColor.white.withAlphaComponent(0.65)
+    }
+
+    private func applyTint() {
+        tintView?.removeFromSuperview()
+        tintView = nil
+
+        guard let tc = tintColor else { return }
+        let tv = UIView(frame: bounds)
+        tv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        tv.backgroundColor = tc.withAlphaComponent(0.18)
+        insertSubview(tv, aboveSubview: blurView)
+        tintView = tv
+    }
+
+    // MARK: Blur style parsing
+
+    static func parseBlurStyle(_ name: String) -> UIBlurEffect.Style {
+        if #available(iOS 13.0, *) {
+            switch name {
+            case "systemUltraThinMaterial":  return .systemUltraThinMaterial
+            case "systemThinMaterial":        return .systemThinMaterial
+            case "systemMaterial":            return .systemMaterial
+            case "systemThickMaterial":       return .systemThickMaterial
+            case "systemChromeMaterial":      return .systemChromeMaterial
+            default:                          return .systemUltraThinMaterial
+            }
+        }
+        return .light
     }
 }
 
-// MARK: - FlutterPlatformView
+// MARK: - iOS26DrawerPlatformView
 
-/// Platform view that wraps DrawerGlassView and handles the Flutter method channel.
+/// Flutter platform view that wraps DrawerGlassView and owns the method channel.
 class iOS26DrawerPlatformView: NSObject, FlutterPlatformView {
 
     private let glassView: DrawerGlassView
@@ -100,11 +150,21 @@ class iOS26DrawerPlatformView: NSObject, FlutterPlatformView {
         )
 
         var isDark = false
+        var blurStyleName = "systemUltraThinMaterial"
+        var tintColor: UIColor? = nil
+
         if let dict = args as? [String: Any] {
             isDark = dict["isDark"] as? Bool ?? false
+            if let styleName = dict["blurStyle"] as? String { blurStyleName = styleName }
+            if let tint = dict["tintColor"] as? NSNumber { tintColor = UIColor(argb: tint.intValue) }
         }
 
-        glassView = DrawerGlassView(frame: frame, isDark: isDark)
+        glassView = DrawerGlassView(
+            frame: frame,
+            isDark: isDark,
+            blurStyleName: blurStyleName,
+            tintColor: tintColor
+        )
 
         super.init()
 
@@ -116,23 +176,32 @@ class iOS26DrawerPlatformView: NSObject, FlutterPlatformView {
     func view() -> UIView { glassView }
 
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any] else {
+            result(nil); return
+        }
         switch call.method {
         case "setBrightness":
-            if let args = call.arguments as? [String: Any],
-               let dark = args["isDark"] as? Bool {
-                glassView.isDark = dark
+            if let dark = args["isDark"] as? Bool { glassView.isDark = dark }
+            result(nil)
+        case "setBlurStyle":
+            if let name = args["blurStyle"] as? String { glassView.blurStyleName = name }
+            result(nil)
+        case "setTintColor":
+            if let tint = args["tintColor"] as? NSNumber {
+                glassView.tintColor = UIColor(argb: tint.intValue)
+            } else {
+                glassView.tintColor = nil
             }
             result(nil)
-
         default:
             result(FlutterMethodNotImplemented)
         }
     }
 }
 
-// MARK: - FlutterPlatformViewFactory
+// MARK: - iOS26DrawerViewFactory
 
-/// Factory that creates iOS26DrawerPlatformView instances.
+/// Factory that vends iOS26DrawerPlatformView instances.
 class iOS26DrawerViewFactory: NSObject, FlutterPlatformViewFactory {
 
     private let messenger: FlutterBinaryMessenger

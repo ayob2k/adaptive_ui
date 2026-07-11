@@ -12,8 +12,28 @@ class DrawerDemoPage extends StatefulWidget {
 class _DrawerDemoPageState extends State<DrawerDemoPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String _currentPage = 'Home';
+  AdaptiveDrawerStyle _drawerStyle = AdaptiveDrawerStyle.glass;
 
-  static const _pages = ['Home', 'Profile', 'Notifications', 'Settings', 'About'];
+  static const _styleLabels = {
+    AdaptiveDrawerStyle.glass: 'Glass',
+    AdaptiveDrawerStyle.frosted: 'Frosted',
+    AdaptiveDrawerStyle.tinted: 'Tinted',
+    AdaptiveDrawerStyle.filled: 'Filled',
+  };
+
+  Color? get _tintForStyle {
+    if (_drawerStyle == AdaptiveDrawerStyle.tinted) {
+      return PlatformInfo.isIOS
+          ? CupertinoColors.systemBlue
+          : Colors.deepPurple;
+    }
+    if (_drawerStyle == AdaptiveDrawerStyle.filled) {
+      final isDark =
+          MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+      return isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,16 +41,18 @@ class _DrawerDemoPageState extends State<DrawerDemoPage> {
       scaffoldKey: _scaffoldKey,
       appBar: AdaptiveAppBar(title: 'Drawer Demo'),
       drawer: AdaptiveDrawer(
+        style: _drawerStyle,
+        backgroundColor: _tintForStyle,
         child: Column(
           children: [
             AdaptiveDrawerHeader(
               title: 'Adaptive UI',
-              subtitle: 'Platform-native drawer',
+              subtitle: '${_styleLabels[_drawerStyle]!} style',
               leading: Container(
-                width: 42,
-                height: 42,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
+                  color: Colors.white.withValues(alpha: 0.22),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -46,31 +68,42 @@ class _DrawerDemoPageState extends State<DrawerDemoPage> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  _buildItem(
-                    context,
-                    icon: PlatformInfo.isIOS ? CupertinoIcons.house_fill : Icons.home,
+                  AdaptiveDrawerItem(
+                    icon: Icons.home,
+                    cupertinoIcon: CupertinoIcons.house_fill,
                     label: 'Home',
+                    isSelected: _currentPage == 'Home',
+                    onTap: () => _navigate('Home'),
                   ),
-                  _buildItem(
-                    context,
-                    icon: PlatformInfo.isIOS ? CupertinoIcons.person_fill : Icons.person,
+                  AdaptiveDrawerItem(
+                    icon: Icons.person,
+                    cupertinoIcon: CupertinoIcons.person_fill,
                     label: 'Profile',
+                    isSelected: _currentPage == 'Profile',
+                    onTap: () => _navigate('Profile'),
                   ),
-                  _buildItem(
-                    context,
-                    icon: PlatformInfo.isIOS ? CupertinoIcons.bell_fill : Icons.notifications,
+                  AdaptiveDrawerItem(
+                    icon: Icons.notifications,
+                    cupertinoIcon: CupertinoIcons.bell_fill,
                     label: 'Notifications',
+                    isSelected: _currentPage == 'Notifications',
+                    trailing: _Badge(count: 3),
+                    onTap: () => _navigate('Notifications'),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
-                  _buildItem(
-                    context,
-                    icon: PlatformInfo.isIOS ? CupertinoIcons.settings : Icons.settings,
+                  AdaptiveDrawerItem(
+                    icon: Icons.settings,
+                    cupertinoIcon: CupertinoIcons.settings,
                     label: 'Settings',
+                    isSelected: _currentPage == 'Settings',
+                    onTap: () => _navigate('Settings'),
                   ),
-                  _buildItem(
-                    context,
-                    icon: PlatformInfo.isIOS ? CupertinoIcons.info_circle : Icons.info_outline,
+                  AdaptiveDrawerItem(
+                    icon: Icons.info_outline,
+                    cupertinoIcon: CupertinoIcons.info_circle,
                     label: 'About',
+                    isSelected: _currentPage == 'About',
+                    onTap: () => _navigate('About'),
                   ),
                 ],
               ),
@@ -79,85 +112,166 @@ class _DrawerDemoPageState extends State<DrawerDemoPage> {
         ),
       ),
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  PlatformInfo.isIOS ? CupertinoIcons.sidebar_left : Icons.menu,
-                  size: 64,
-                  color: PlatformInfo.isIOS
-                      ? CupertinoColors.systemBlue
-                      : Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Adaptive Drawer',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Current page: $_currentPage',
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'iOS 26+: Liquid Glass glassy panel\n'
-                  'iOS <26: Cupertino-styled drawer\n'
-                  'Android: Material 3 drawer',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 32),
-                AdaptiveButton(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Style picker
+              const Text(
+                'Drawer Style',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: AdaptiveDrawerStyle.values.map((s) {
+                  final selected = s == _drawerStyle;
+                  return GestureDetector(
+                    onTap: () => setState(() => _drawerStyle = s),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? (PlatformInfo.isIOS
+                                  ? CupertinoColors.systemBlue
+                                  : Theme.of(context).colorScheme.primary)
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: selected
+                              ? Colors.transparent
+                              : Colors.grey.shade400,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _styleLabels[s]!,
+                        style: TextStyle(
+                          color: selected ? Colors.white : null,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 32),
+
+              // Open button
+              Center(
+                child: AdaptiveButton(
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                   label: 'Open Drawer',
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Info cards
+              _InfoCard(
+                title: 'Current page',
+                value: _currentPage,
+                icon: Icons.navigation,
+              ),
+              const SizedBox(height: 12),
+              _InfoCard(
+                title: 'iOS 26+ appearance',
+                value:
+                    'Native UIVisualEffectView\n'
+                    '+ entrance animation\n'
+                    '+ Liquid Glass glint sweep',
+                icon: Icons.blur_on,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-  }) {
-    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    final isSelected = _currentPage == label;
-    final isIOS = PlatformInfo.isIOS;
+  void _navigate(String page) {
+    setState(() => _currentPage = page);
+    Navigator.pop(context);
+  }
+}
 
-    final activeColor = isIOS
-        ? CupertinoColors.systemBlue
-        : Theme.of(context).colorScheme.primary;
-    final inactiveColor = isDark ? Colors.white70 : Colors.black54;
+class _Badge extends StatelessWidget {
+  const _Badge({required this.count});
+  final int count;
 
-    return ListTile(
-      leading: Icon(icon, color: isSelected ? activeColor : inactiveColor),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? activeColor : (isDark ? Colors.white : Colors.black87),
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: const BoxDecoration(
+        color: Colors.red,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          '$count',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
-      selected: isSelected,
-      selectedTileColor: PlatformInfo.isIOS26OrHigher()
-          ? Colors.white.withValues(alpha: 0.13)
-          : null,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isIOS ? 10 : 0),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+  final String title;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.07)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
       ),
-      horizontalTitleGap: 8,
-      onTap: () {
-        setState(() => _currentPage = label);
-        Navigator.pop(context);
-      },
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
