@@ -66,7 +66,6 @@ export 'src/widgets/adaptive_form_section.dart';
 export 'src/widgets/adaptive_expansion_tile.dart';
 export 'src/widgets/adaptive_blur_view.dart';
 export 'src/widgets/adaptive_loader.dart';
-export 'src/widgets/adaptive_drawer.dart';
 
 // iOS 26 specific widgets (for advanced usage)
 export 'src/widgets/ios26/ios26_button.dart';
@@ -78,4 +77,3 @@ export 'src/widgets/ios26/ios26_alert_dialog.dart';
 export 'src/widgets/ios26/ios26_native_search_tab_bar.dart';
 export 'src/widgets/ios26/ios26_native_tab_bar.dart';
 export 'src/widgets/ios26/ios26_scaffold_legacy.dart';
-export 'src/widgets/ios26/ios26_drawer.dart';
