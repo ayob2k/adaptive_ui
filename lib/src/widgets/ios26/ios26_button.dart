@@ -194,7 +194,9 @@ class _IOS26ButtonState extends State<IOS26Button> {
 
   @override
   void dispose() {
-    _observedRoute?.secondaryAnimation?.removeListener(_onSecondaryAnimationChanged);
+    _observedRoute?.secondaryAnimation?.removeListener(
+      _onSecondaryAnimationChanged,
+    );
     _channel.setMethodCallHandler(null);
     super.dispose();
   }
@@ -206,9 +208,13 @@ class _IOS26ButtonState extends State<IOS26Button> {
   void _updateRouteObservation() {
     final newRoute = ModalRoute.of(context);
     if (newRoute == _observedRoute) return;
-    _observedRoute?.secondaryAnimation?.removeListener(_onSecondaryAnimationChanged);
+    _observedRoute?.secondaryAnimation?.removeListener(
+      _onSecondaryAnimationChanged,
+    );
     _observedRoute = newRoute;
-    _observedRoute?.secondaryAnimation?.addListener(_onSecondaryAnimationChanged);
+    _observedRoute?.secondaryAnimation?.addListener(
+      _onSecondaryAnimationChanged,
+    );
     _syncObscuredState();
   }
 
@@ -364,6 +370,14 @@ class _IOS26ButtonState extends State<IOS26Button> {
     }
   }
 
+  Widget _buildPlatformView() => ClipRect(
+    child: UiKitView(
+      viewType: 'adaptive_ui/ios26_button',
+      creationParams: _buildCreationParams(),
+      creationParamsCodec: const StandardMessageCodec(),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     // Only use native implementation on iOS
@@ -372,19 +386,16 @@ class _IOS26ButtonState extends State<IOS26Button> {
         // The child is a non-positioned Stack member so it drives the Stack's
         // size. Positioned.fill then stretches the native view to match,
         // meaning no manual SizedBox is needed — the button adapts to its child.
-        // When a route is on top (bottom sheet, dialog, new page), the native
-        // UiKitView is omitted so it cannot bleed above Flutter's overlay layer.
+        //
+        // ClipRect ensures Flutter communicates the correct clip rect to the
+        // platform view system so scroll views and Scaffold body boundaries
+        // are respected. When a route is on top (bottom sheet, dialog, new
+        // page), the UiKitView is omitted entirely so it cannot render above
+        // Flutter's overlay layer.
         return Stack(
           alignment: widget.alignment,
           children: [
-            if (!_routeIsObscured)
-              Positioned.fill(
-                child: UiKitView(
-                  viewType: 'adaptive_ui/ios26_button',
-                  creationParams: _buildCreationParams(),
-                  creationParamsCodec: const StandardMessageCodec(),
-                ),
-              ),
+            if (!_routeIsObscured) Positioned.fill(child: _buildPlatformView()),
             IgnorePointer(child: widget.child!),
           ],
         );
@@ -392,16 +403,13 @@ class _IOS26ButtonState extends State<IOS26Button> {
 
       // For label / SF-symbol mode, swap the native view for a transparent
       // placeholder of equal size while a route sits on top of this one.
+      // ClipRect propagates the ancestor scroll/scaffold clip rect into the
+      // platform view layer so the UIView is hidden when scrolled behind the
+      // AppBar or BottomBar.
       return SizedBox(
         width: widget.minSize?.width,
         height: _height,
-        child: _routeIsObscured
-            ? null
-            : UiKitView(
-                viewType: 'adaptive_ui/ios26_button',
-                creationParams: _buildCreationParams(),
-                creationParamsCodec: const StandardMessageCodec(),
-              ),
+        child: _routeIsObscured ? null : _buildPlatformView(),
       );
     }
 

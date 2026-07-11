@@ -119,6 +119,15 @@ class iOS26ButtonView: NSObject, FlutterPlatformView {
         button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
 
+        // Clip the container and button to their logical bounds so that the
+        // Liquid Glass compositor effects (blur, glow, reflections) cannot
+        // bleed outside the UIView frame. Without this, the glass halo leaks
+        // into Flutter widgets rendered above the button (AppBar, BottomBar,
+        // higher Stack children) because UIKit effects are composited before
+        // Flutter's overlay surface, bypassing Flutter's clip layers.
+        _view.clipsToBounds = true
+        _view.layer.masksToBounds = true
+
         // Set tint color
         button.tintColor = buttonColor
 
