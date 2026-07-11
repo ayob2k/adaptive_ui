@@ -83,5 +83,12 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
             ios26LoaderFactory,
             withId: "adaptive_ui/ios26_loader"
         )
+
+        // Register iOS 26 Drawer background platform view factory
+        let ios26DrawerFactory = iOS26DrawerViewFactory(messenger: registrar.messenger())
+        registrar.register(
+            ios26DrawerFactory,
+            withId: "adaptive_ui/ios26_drawer"
+        )
     }
 }
