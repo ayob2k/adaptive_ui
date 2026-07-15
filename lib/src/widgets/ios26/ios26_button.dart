@@ -1,7 +1,9 @@
-import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../style/sf_symbol.dart';
 
 /// iOS 26 native button styles (Liquid Glass design)
@@ -40,20 +42,21 @@ enum IOS26ButtonSize {
   large,
 }
 
-/// Native iOS 26 button implementation using platform views
+/// iOS 26 "Liquid Glass" style button implemented entirely with Flutter.
 ///
-/// This button uses UIKit platform views to render native iOS 26 Liquid Glass
-/// designs. It communicates with the native iOS side via platform channels.
+/// Historically this widget embedded a native UIKit button through a
+/// `UiKitView` platform view. Platform views are composited on a separate
+/// layer from the rest of the Flutter UI, which caused three recurring bugs:
 ///
-/// Features:
-/// - Native Liquid Glass visual effects
-/// - iOS 26 button styles and animations
-/// - Haptic feedback
-/// - Native gesture handling
-/// - Automatic light/dark mode support
+///   * the native button painted *above* bottom sheets, dialogs and pushed
+///     pages (z-order bleed),
+///   * hiding it during route transitions produced a visible flash,
+///   * returning to a page recreated the view and re-ran its entry animation.
 ///
-/// Note: For complex layouts with custom widgets, use the AdaptiveButton.child() constructor
-/// which will overlay the widget on top of the native iOS 26 button.
+/// Rendering the button with pure Flutter widgets eliminates all of those
+/// problems: it lives in the normal widget tree and behaves exactly like any
+/// other Flutter button. The glass styles reproduce the iOS 26 look with a
+/// real [BackdropFilter] blur, a specular top highlight and a fine glass edge.
 class IOS26Button extends StatefulWidget {
   /// Creates an iOS 26 style button with a text label
   const IOS26Button({
@@ -75,7 +78,6 @@ class IOS26Button extends StatefulWidget {
        alignment = Alignment.center;
 
   /// Creates an iOS 26 style button with a custom child widget
-  /// The child will be overlaid on top of the native button background
   const IOS26Button.child({
     super.key,
     required this.onPressed,
@@ -94,7 +96,7 @@ class IOS26Button extends StatefulWidget {
        isChildMode = true,
        sfSymbol = null;
 
-  /// Creates an iOS 26 style button with a native SF Symbol icon
+  /// Creates an iOS 26 style button with an SF Symbol icon
   const IOS26Button.sfSymbol({
     super.key,
     required this.onPressed,
@@ -166,274 +168,13 @@ class IOS26Button extends StatefulWidget {
 }
 
 class _IOS26ButtonState extends State<IOS26Button> {
-  static int _nextId = 0;
-  late final int _id;
-  late final MethodChannel _channel;
-  bool? _lastIsDark;
+  bool _pressed = false;
 
-  // Tracks whether a modal route (bottom sheet, dialog, new page) is
-  // currently on top of this widget's route. When true, the native UIView
-  // is hidden via setHidden (kept alive) so it cannot render above Flutter
-  // overlays — without destroying/recreating the UiKitView on return.
-  bool _routeIsObscured = false;
-  ModalRoute<dynamic>? _observedRoute;
+  bool get _isEnabled => widget.enabled && widget.onPressed != null;
 
-  // Scroll position of the nearest ancestor Scrollable, used to trigger
-  // a rebuild when scrolling stops.  Flutter's hybrid composition creates
-  // a separate "overlay" render surface for content above the UiKitView
-  // (e.g. the AppBar).  That overlay can go stale when the platform view
-  // scrolls off-screen and back; calling setState after scroll ends forces
-  // Flutter to re-evaluate and repaint the overlay surface.
-  ScrollPosition? _scrollPosition;
-
-  @override
-  void initState() {
-    super.initState();
-    _id = _nextId++;
-    _channel = MethodChannel('adaptive_ui/ios26_button_$_id');
-    _channel.setMethodCallHandler(_handleMethod);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncBrightnessIfNeeded();
-    _updateRouteObservation();
-    _updateScrollObservation();
-  }
-
-  @override
-  void dispose() {
-    _scrollPosition?.isScrollingNotifier.removeListener(_onScrollingChanged);
-    _observedRoute?.secondaryAnimation?.removeListener(
-      _onSecondaryAnimationChanged,
-    );
-    _observedRoute?.animation?.removeListener(_onRouteAnimationChanged);
-    _channel.setMethodCallHandler(null);
-    super.dispose();
-  }
-
-  // ── Route observation ────────────────────────────────────────────────────
-
-  // Subscribes to the nearest modal route's secondaryAnimation so we are
-  // notified whenever a new route is pushed on top of (or popped from) this
-  // widget's route. The secondaryAnimation value is > 0 whenever something
-  // is on top, which is exactly when we must suppress the native UIView.
-  //
-  // Also subscribes to the route's primary animation so we can trigger an
-  // overlay refresh once the page-entry transition finishes.
-  void _updateRouteObservation() {
-    final newRoute = ModalRoute.of(context);
-    if (newRoute == _observedRoute) return;
-    _observedRoute?.secondaryAnimation?.removeListener(
-      _onSecondaryAnimationChanged,
-    );
-    _observedRoute?.animation?.removeListener(_onRouteAnimationChanged);
-    _observedRoute = newRoute;
-    _observedRoute?.secondaryAnimation?.addListener(
-      _onSecondaryAnimationChanged,
-    );
-    _observedRoute?.animation?.addListener(_onRouteAnimationChanged);
-    _syncObscuredState();
-  }
-
-  void _onSecondaryAnimationChanged() => _syncObscuredState();
-
-  // When the page-entry animation finishes, refresh the platform-view overlay
-  // by scheduling a rebuild.  The entry animation can leave the Flutter overlay
-  // surface (which renders the AppBar) in a stale state; rebuilding forces
-  // Flutter to re-composite the overlay with up-to-date content.
-  void _onRouteAnimationChanged() {
-    if (_observedRoute?.animation?.status == AnimationStatus.completed &&
-        mounted) {
-      setState(() {});
-    }
-  }
-
-  void _syncObscuredState() {
-    final value = _observedRoute?.secondaryAnimation?.value ?? 0.0;
-    final isObscured = value > 0.0;
-    if (isObscured == _routeIsObscured) return;
-    _routeIsObscured = isObscured;
-    _setNativeHidden(isObscured);
-    // Rebuild only to toggle IgnorePointer; the UiKitView stays in the tree.
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _setNativeHidden(bool hidden) async {
-    try {
-      await _channel.invokeMethod('setHidden', {'hidden': hidden});
-    } catch (_) {
-      // Platform view may not be ready yet; creationParams carries the
-      // initial hidden state instead.
-    }
-  }
-
-  // ── Scroll observation ───────────────────────────────────────────────────
-
-  void _updateScrollObservation() {
-    final newPosition = Scrollable.maybeOf(context)?.position;
-    if (newPosition == _scrollPosition) return;
-    _scrollPosition?.isScrollingNotifier.removeListener(_onScrollingChanged);
-    _scrollPosition = newPosition;
-    _scrollPosition?.isScrollingNotifier.addListener(_onScrollingChanged);
-  }
-
-  // When scrolling stops, refresh the platform-view overlay.  While the
-  // UiKitView is scrolled off-screen the overlay surface for the AppBar can
-  // become stale; the rebuild re-composites it with correct content.
-  void _onScrollingChanged() {
-    if (!(_scrollPosition?.isScrollingNotifier.value ?? true) && mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> _syncBrightnessIfNeeded() async {
-    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    if (_lastIsDark != isDark) {
-      try {
-        await _channel.invokeMethod('setBrightness', {'isDark': isDark});
-        _lastIsDark = isDark;
-      } catch (e) {
-        // Ignore errors if platform view is not yet ready
-      }
-    }
-  }
-
-  Future<dynamic> _handleMethod(MethodCall call) async {
-    switch (call.method) {
-      case 'pressed':
-        if (widget.enabled && widget.onPressed != null) {
-          widget.onPressed!();
-        }
-        break;
-    }
-  }
-
-  @override
-  void didUpdateWidget(IOS26Button oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    // Update native side if properties changed
-    if (oldWidget.style != widget.style) {
-      _channel.invokeMethod('setStyle', {
-        'style': _styleToString(widget.style),
-      });
-    }
-
-    if (oldWidget.enabled != widget.enabled) {
-      _channel.invokeMethod('setEnabled', {
-        'enabled': widget.enabled && widget.onPressed != null,
-      });
-    }
-
-    if (oldWidget.label != widget.label) {
-      _channel.invokeMethod('setLabel', {'label': widget.label});
-    }
-
-    if (oldWidget.color != widget.color) {
-      _channel.invokeMethod('setColor', {
-        'color': widget.color != null ? _colorToHex(widget.color!) : null,
-      });
-    }
-
-    if (oldWidget.useSmoothRectangleBorder != widget.useSmoothRectangleBorder) {
-      _channel.invokeMethod('setUseSmoothRectangleBorder', {
-        'useSmoothRectangleBorder': widget.useSmoothRectangleBorder,
-      });
-    }
-
-    // Update SF Symbol if changed
-    if (oldWidget.sfSymbol?.name != widget.sfSymbol?.name ||
-        oldWidget.sfSymbol?.size != widget.sfSymbol?.size ||
-        oldWidget.sfSymbol?.color != widget.sfSymbol?.color) {
-      if (widget.sfSymbol != null) {
-        _channel.invokeMethod('setIcon', {
-          'iconName': widget.sfSymbol!.name,
-          'iconSize': widget.sfSymbol!.size,
-          if (widget.sfSymbol!.color != null)
-            'iconColor': _colorToARGB(widget.sfSymbol!.color!),
-        });
-      }
-    }
-  }
-
-  Map<String, dynamic> _buildCreationParams() {
-    return {
-      'id': _id,
-      'label': widget.label,
-      'style': _styleToString(widget.style),
-      'size': _sizeToString(widget.size),
-      'enabled': widget.enabled && widget.onPressed != null,
-      'color': widget.color != null ? _colorToHex(widget.color!) : null,
-      'textColor': widget.textColor != null
-          ? _colorToHex(widget.textColor!)
-          : null,
-      'isDark': MediaQuery.platformBrightnessOf(context) == Brightness.dark,
-      'useSmoothRectangleBorder': widget.useSmoothRectangleBorder,
-      // If built while already covered (e.g. under a sheet), start hidden.
-      'hidden': _routeIsObscured,
-      if (widget.sfSymbol != null) 'iconName': widget.sfSymbol!.name,
-      if (widget.sfSymbol != null) 'iconSize': widget.sfSymbol!.size,
-      if (widget.sfSymbol?.color != null)
-        'iconColor': _colorToARGB(widget.sfSymbol!.color!),
-    };
-  }
-
-  Widget _buildPlatformView() {
-    return IgnorePointer(
-      ignoring: _routeIsObscured,
-      // Stable key keeps the same UiKitView Element across IgnorePointer
-      // rebuilds so the native UIView is never disposed/recreated.
-      child: UiKitView(
-        key: ValueKey('ios26_button_$_id'),
-        viewType: 'adaptive_ui/ios26_button',
-        creationParams: _buildCreationParams(),
-        creationParamsCodec: const StandardMessageCodec(),
-      ),
-    );
-  }
-
-  String _styleToString(IOS26ButtonStyle style) {
-    switch (style) {
-      case IOS26ButtonStyle.filled:
-        return 'filled';
-      case IOS26ButtonStyle.tinted:
-        return 'tinted';
-      case IOS26ButtonStyle.gray:
-        return 'gray';
-      case IOS26ButtonStyle.bordered:
-        return 'bordered';
-      case IOS26ButtonStyle.plain:
-        return 'plain';
-      case IOS26ButtonStyle.glass:
-        return 'glass';
-      case IOS26ButtonStyle.prominentGlass:
-        return 'prominentGlass';
-    }
-  }
-
-  String _sizeToString(IOS26ButtonSize size) {
-    switch (size) {
-      case IOS26ButtonSize.small:
-        return 'small';
-      case IOS26ButtonSize.medium:
-        return 'medium';
-      case IOS26ButtonSize.large:
-        return 'large';
-    }
-  }
-
-  String _colorToHex(Color color) {
-    return '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
-  }
-
-  int _colorToARGB(Color color) {
-    return (((color.a * 255.0).round() & 0xFF) << 24) |
-        (((color.r * 255.0).round() & 0xFF) << 16) |
-        (((color.g * 255.0).round() & 0xFF) << 8) |
-        ((color.b * 255.0).round() & 0xFF);
-  }
+  bool get _isGlass =>
+      widget.style == IOS26ButtonStyle.glass ||
+      widget.style == IOS26ButtonStyle.prominentGlass;
 
   double get _height {
     switch (widget.size) {
@@ -446,80 +187,371 @@ class _IOS26ButtonState extends State<IOS26Button> {
     }
   }
 
+  double get _fontSize {
+    switch (widget.size) {
+      case IOS26ButtonSize.small:
+        return 13.0;
+      case IOS26ButtonSize.medium:
+        return 15.0;
+      case IOS26ButtonSize.large:
+        return 17.0;
+    }
+  }
+
+  FontWeight get _fontWeight =>
+      widget.size == IOS26ButtonSize.large ? FontWeight.w600 : FontWeight.w500;
+
+  BorderRadius _resolveRadius() {
+    if (widget.borderRadius != null) return widget.borderRadius!;
+    if (!widget.useSmoothRectangleBorder) {
+      return BorderRadius.circular(1000); // capsule
+    }
+    switch (widget.size) {
+      case IOS26ButtonSize.small:
+        return BorderRadius.circular(8);
+      case IOS26ButtonSize.medium:
+        return BorderRadius.circular(10);
+      case IOS26ButtonSize.large:
+        return BorderRadius.circular(12);
+    }
+  }
+
+  EdgeInsetsGeometry _resolvePadding() {
+    if (widget.padding != null) return widget.padding!;
+    // Icon-only buttons keep tight, symmetric padding so they can live inside
+    // small fixed-size boxes (e.g. a 38x38 circular icon button).
+    if (widget.sfSymbol != null) return const EdgeInsets.all(6);
+    switch (widget.size) {
+      case IOS26ButtonSize.small:
+        return const EdgeInsets.symmetric(horizontal: 12, vertical: 4);
+      case IOS26ButtonSize.medium:
+        return const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+      case IOS26ButtonSize.large:
+        return const EdgeInsets.symmetric(horizontal: 20, vertical: 10);
+    }
+  }
+
+  Color get _accent => widget.color ?? CupertinoColors.activeBlue;
+
+  bool _isDark(BuildContext context) =>
+      CupertinoTheme.of(context).brightness == Brightness.dark ||
+      MediaQuery.maybeOf(context)?.platformBrightness == Brightness.dark;
+
+  void _handleTap() {
+    if (!_isEnabled) return;
+    HapticFeedback.mediumImpact();
+    widget.onPressed!.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Only use native implementation on iOS
-    if (!kIsWeb && Platform.isIOS) {
-      if (widget.isChildMode) {
-        // The child is a non-positioned Stack member so it drives the Stack's
-        // size. Positioned.fill then stretches the native view to match,
-        // meaning no manual SizedBox is needed — the button adapts to its child.
-        // When a route is on top, the native UIView is hidden (not disposed)
-        // so Liquid Glass cannot bleed above Flutter overlays, and returning
-        // to this page does not recreate the platform view.
-        return Stack(
-          alignment: widget.alignment,
-          children: [
-            Positioned.fill(child: _buildPlatformView()),
-            IgnorePointer(child: widget.child!),
-          ],
-        );
-      }
+    Widget button = _buildDecoratedButton(context);
 
-      // Label / SF-symbol mode — keep the UiKitView mounted; native setHidden
-      // suppresses painting while another route covers this one.
-      return SizedBox(
-        width: widget.minSize?.width,
-        height: _height,
-        child: _buildPlatformView(),
+    if (!widget.isChildMode) {
+      button = ConstrainedBox(
+        constraints: BoxConstraints(minHeight: _height),
+        child: button,
       );
     }
 
-    // Fallback to CupertinoButton on other platforms
-    return _buildFallbackButton();
-  }
-
-  Widget _buildFallbackButton() {
-    final buttonColor = widget.color ?? CupertinoColors.systemBlue;
-    final textStyle = TextStyle(
-      color: widget.textColor ?? CupertinoColors.white,
+    button = AnimatedScale(
+      scale: _pressed ? 0.96 : 1.0,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+      child: AnimatedOpacity(
+        opacity: _isEnabled ? 1.0 : 0.4,
+        duration: const Duration(milliseconds: 120),
+        child: button,
+      ),
     );
 
-    // If child mode, use the child widget
-    final buttonChild = widget.isChildMode
-        ? widget.child!
-        : Text(widget.label, style: textStyle);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _isEnabled ? _handleTap : null,
+      onTapDown: _isEnabled ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: _isEnabled ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: _isEnabled ? () => setState(() => _pressed = false) : null,
+      child: button,
+    );
+  }
+
+  Widget _buildDecoratedButton(BuildContext context) {
+    final radius = _resolveRadius();
+    final content = Padding(
+      padding: _resolvePadding(),
+      child: FittedBox(fit: BoxFit.scaleDown, child: _buildContent(context)),
+    );
+
+    if (_isGlass) {
+      return _buildGlass(context, radius, content);
+    }
+    return _buildSolid(context, radius, content);
+  }
+
+  // ── Solid (non-glass) styles ───────────────────────────────────────────────
+
+  Widget _buildSolid(
+    BuildContext context,
+    BorderRadius radius,
+    Widget content,
+  ) {
+    final isDark = _isDark(context);
+    Color? background;
+    BoxBorder? border;
 
     switch (widget.style) {
       case IOS26ButtonStyle.filled:
-        return CupertinoButton.filled(
-          onPressed: widget.enabled ? widget.onPressed : null,
-          padding:
-              widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
-          child: buttonChild,
-        );
-
+        background = _accent;
+        break;
+      case IOS26ButtonStyle.tinted:
+        background = _accent.withValues(alpha: 0.15);
+        break;
+      case IOS26ButtonStyle.gray:
+        background = isDark
+            ? const Color(0xFF48484A) // systemGray4 dark
+            : const Color(0xFFE5E5EA); // systemGray5 light
+        break;
+      case IOS26ButtonStyle.bordered:
+        background = Colors.transparent;
+        border = Border.all(color: _accent, width: 1.5);
+        break;
       case IOS26ButtonStyle.plain:
-        return CupertinoButton(
-          onPressed: widget.enabled ? widget.onPressed : null,
-          padding:
-              widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
-          child: widget.isChildMode
-              ? widget.child!
-              : Text(
-                  widget.label,
-                  style: TextStyle(color: widget.textColor ?? buttonColor),
-                ),
-        );
+        background = Colors.transparent;
+        break;
+      case IOS26ButtonStyle.glass:
+      case IOS26ButtonStyle.prominentGlass:
+        break; // handled elsewhere
+    }
 
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: radius,
+        border: border,
+      ),
+      child: content,
+    );
+  }
+
+  // ── Liquid Glass styles ─────────────────────────────────────────────────────
+
+  Widget _buildGlass(
+    BuildContext context,
+    BorderRadius radius,
+    Widget content,
+  ) {
+    final isDark = _isDark(context);
+    final prominent = widget.style == IOS26ButtonStyle.prominentGlass;
+
+    // Base translucent fill. Prominent glass leans on the accent color for a
+    // richer, more saturated pane; plain glass stays near-neutral so whatever
+    // is behind it shows through.
+    final Color fill;
+    if (prominent) {
+      fill = _accent.withValues(alpha: isDark ? 0.55 : 0.78);
+    } else {
+      fill = (widget.color ?? Colors.white).withValues(
+        alpha: widget.color != null ? 0.28 : (isDark ? 0.18 : 0.30),
+      );
+    }
+
+    final borderColor = Colors.white.withValues(alpha: isDark ? 0.20 : 0.55);
+
+    // Specular highlight — a soft light band across the top that sells the
+    // "glass" sheen. Stronger in light mode.
+    final highlight = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.white.withValues(alpha: isDark ? 0.22 : 0.45),
+        Colors.white.withValues(alpha: 0.06),
+        Colors.white.withValues(alpha: 0.0),
+      ],
+      stops: const [0.0, 0.45, 1.0],
+    );
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: radius,
+            border: Border.all(color: borderColor, width: 1),
+            boxShadow: [
+              // Subtle inner-edge lift, kept inside the clip.
+              BoxShadow(
+                color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.15),
+                blurRadius: 0.5,
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    gradient: highlight,
+                  ),
+                ),
+              ),
+              content,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Content (label / child / icon) ──────────────────────────────────────────
+
+  Widget _buildContent(BuildContext context) {
+    final foreground = _foregroundColor(context);
+
+    if (widget.isChildMode) {
+      return DefaultTextStyle.merge(
+        style: TextStyle(
+          color: foreground,
+          fontSize: _fontSize,
+          fontWeight: _fontWeight,
+        ),
+        child: IconTheme.merge(
+          data: IconThemeData(color: foreground),
+          child: widget.child!,
+        ),
+      );
+    }
+
+    if (widget.sfSymbol != null) {
+      return Icon(
+        _iconForSFSymbol(widget.sfSymbol!.name),
+        size: widget.sfSymbol!.size,
+        color: widget.sfSymbol!.color ?? foreground,
+      );
+    }
+
+    return Text(
+      widget.label,
+      style: TextStyle(
+        color: foreground,
+        fontSize: _fontSize,
+        fontWeight: _fontWeight,
+        letterSpacing: -0.2,
+      ),
+    );
+  }
+
+  Color _foregroundColor(BuildContext context) {
+    if (widget.textColor != null) return widget.textColor!;
+    final isDark = _isDark(context);
+    switch (widget.style) {
+      case IOS26ButtonStyle.filled:
+        return Colors.white;
+      case IOS26ButtonStyle.tinted:
+      case IOS26ButtonStyle.bordered:
+      case IOS26ButtonStyle.plain:
+        return _accent;
+      case IOS26ButtonStyle.gray:
+        return isDark ? Colors.white : Colors.black;
+      case IOS26ButtonStyle.glass:
+        return isDark ? Colors.white : Colors.black;
+      case IOS26ButtonStyle.prominentGlass:
+        return Colors.white;
+    }
+  }
+
+  /// Maps common SF Symbol names to their closest [CupertinoIcons] equivalent
+  /// so `.sfSymbol` buttons still render meaningfully without a native view.
+  IconData _iconForSFSymbol(String name) {
+    switch (name) {
+      case 'chevron.left':
+      case 'chevron.backward':
+        return CupertinoIcons.chevron_left;
+      case 'chevron.right':
+      case 'chevron.forward':
+        return CupertinoIcons.chevron_right;
+      case 'chevron.up':
+        return CupertinoIcons.chevron_up;
+      case 'chevron.down':
+        return CupertinoIcons.chevron_down;
+      case 'heart':
+        return CupertinoIcons.heart;
+      case 'heart.fill':
+        return CupertinoIcons.heart_fill;
+      case 'star':
+        return CupertinoIcons.star;
+      case 'star.fill':
+        return CupertinoIcons.star_fill;
+      case 'bookmark':
+        return CupertinoIcons.bookmark;
+      case 'bookmark.fill':
+        return CupertinoIcons.bookmark_fill;
+      case 'square.and.arrow.up':
+        return CupertinoIcons.share;
+      case 'square.and.arrow.down':
+        return CupertinoIcons.arrow_down_doc;
+      case 'ellipsis':
+        return CupertinoIcons.ellipsis;
+      case 'ellipsis.circle':
+        return CupertinoIcons.ellipsis_circle;
+      case 'plus':
+        return CupertinoIcons.plus;
+      case 'plus.circle':
+        return CupertinoIcons.plus_circle;
+      case 'plus.circle.fill':
+        return CupertinoIcons.plus_circle_fill;
+      case 'minus':
+        return CupertinoIcons.minus;
+      case 'xmark':
+        return CupertinoIcons.xmark;
+      case 'xmark.circle.fill':
+        return CupertinoIcons.xmark_circle_fill;
+      case 'checkmark':
+        return CupertinoIcons.checkmark;
+      case 'trash':
+        return CupertinoIcons.delete;
+      case 'trash.fill':
+        return CupertinoIcons.delete_solid;
+      case 'pencil':
+        return CupertinoIcons.pencil;
+      case 'gear':
+      case 'gearshape':
+        return CupertinoIcons.gear;
+      case 'square.and.pencil':
+        return CupertinoIcons.square_pencil;
+      case 'magnifyingglass':
+        return CupertinoIcons.search;
+      case 'bell':
+        return CupertinoIcons.bell;
+      case 'bell.fill':
+        return CupertinoIcons.bell_fill;
+      case 'person':
+        return CupertinoIcons.person;
+      case 'person.fill':
+        return CupertinoIcons.person_fill;
+      case 'house':
+        return CupertinoIcons.house;
+      case 'house.fill':
+        return CupertinoIcons.house_fill;
+      case 'paperplane':
+        return CupertinoIcons.paperplane;
+      case 'paperplane.fill':
+        return CupertinoIcons.paperplane_fill;
+      case 'arrow.left':
+        return CupertinoIcons.arrow_left;
+      case 'arrow.right':
+        return CupertinoIcons.arrow_right;
+      case 'arrow.clockwise':
+        return CupertinoIcons.arrow_clockwise;
+      case 'square.grid.2x2':
+        return CupertinoIcons.square_grid_2x2;
+      case 'list.bullet':
+        return CupertinoIcons.list_bullet;
       default:
-        return CupertinoButton(
-          onPressed: widget.enabled ? widget.onPressed : null,
-          color: buttonColor,
-          padding:
-              widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
-          child: buttonChild,
-        );
+        return CupertinoIcons.circle_fill;
     }
   }
 }
