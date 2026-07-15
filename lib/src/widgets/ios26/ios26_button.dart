@@ -172,8 +172,9 @@ class _IOS26ButtonState extends State<IOS26Button> {
   bool? _lastIsDark;
 
   // Tracks whether a modal route (bottom sheet, dialog, new page) is
-  // currently on top of this widget's route. When true, the native UiKitView
-  // is removed from the tree so it cannot render above Flutter overlays.
+  // currently on top of this widget's route. When true, the native UIView
+  // is hidden via setHidden (kept alive) so it cannot render above Flutter
+  // overlays — without destroying/recreating the UiKitView on return.
   bool _routeIsObscured = false;
   ModalRoute<dynamic>? _observedRoute;
 
@@ -252,8 +253,19 @@ class _IOS26ButtonState extends State<IOS26Button> {
   void _syncObscuredState() {
     final value = _observedRoute?.secondaryAnimation?.value ?? 0.0;
     final isObscured = value > 0.0;
-    if (isObscured != _routeIsObscured) {
-      setState(() => _routeIsObscured = isObscured);
+    if (isObscured == _routeIsObscured) return;
+    _routeIsObscured = isObscured;
+    _setNativeHidden(isObscured);
+    // Rebuild only to toggle IgnorePointer; the UiKitView stays in the tree.
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _setNativeHidden(bool hidden) async {
+    try {
+      await _channel.invokeMethod('setHidden', {'hidden': hidden});
+    } catch (_) {
+      // Platform view may not be ready yet; creationParams carries the
+      // initial hidden state instead.
     }
   }
 
@@ -359,11 +371,27 @@ class _IOS26ButtonState extends State<IOS26Button> {
           : null,
       'isDark': MediaQuery.platformBrightnessOf(context) == Brightness.dark,
       'useSmoothRectangleBorder': widget.useSmoothRectangleBorder,
+      // If built while already covered (e.g. under a sheet), start hidden.
+      'hidden': _routeIsObscured,
       if (widget.sfSymbol != null) 'iconName': widget.sfSymbol!.name,
       if (widget.sfSymbol != null) 'iconSize': widget.sfSymbol!.size,
       if (widget.sfSymbol?.color != null)
         'iconColor': _colorToARGB(widget.sfSymbol!.color!),
     };
+  }
+
+  Widget _buildPlatformView() {
+    return IgnorePointer(
+      ignoring: _routeIsObscured,
+      // Stable key keeps the same UiKitView Element across IgnorePointer
+      // rebuilds so the native UIView is never disposed/recreated.
+      child: UiKitView(
+        key: ValueKey('ios26_button_$_id'),
+        viewType: 'adaptive_ui/ios26_button',
+        creationParams: _buildCreationParams(),
+        creationParamsCodec: const StandardMessageCodec(),
+      ),
+    );
   }
 
   String _styleToString(IOS26ButtonStyle style) {
@@ -426,36 +454,24 @@ class _IOS26ButtonState extends State<IOS26Button> {
         // The child is a non-positioned Stack member so it drives the Stack's
         // size. Positioned.fill then stretches the native view to match,
         // meaning no manual SizedBox is needed — the button adapts to its child.
-        // When a route is on top (bottom sheet, dialog, new page), the native
-        // UiKitView is omitted so it cannot bleed above Flutter's overlay layer.
+        // When a route is on top, the native UIView is hidden (not disposed)
+        // so Liquid Glass cannot bleed above Flutter overlays, and returning
+        // to this page does not recreate the platform view.
         return Stack(
           alignment: widget.alignment,
           children: [
-            if (!_routeIsObscured)
-              Positioned.fill(
-                child: UiKitView(
-                  viewType: 'adaptive_ui/ios26_button',
-                  creationParams: _buildCreationParams(),
-                  creationParamsCodec: const StandardMessageCodec(),
-                ),
-              ),
+            Positioned.fill(child: _buildPlatformView()),
             IgnorePointer(child: widget.child!),
           ],
         );
       }
 
-      // For label / SF-symbol mode, swap the native view for a transparent
-      // placeholder of equal size while a route sits on top of this one.
+      // Label / SF-symbol mode — keep the UiKitView mounted; native setHidden
+      // suppresses painting while another route covers this one.
       return SizedBox(
         width: widget.minSize?.width,
         height: _height,
-        child: _routeIsObscured
-            ? null
-            : UiKitView(
-                viewType: 'adaptive_ui/ios26_button',
-                creationParams: _buildCreationParams(),
-                creationParamsCodec: const StandardMessageCodec(),
-              ),
+        child: _buildPlatformView(),
       );
     }
 

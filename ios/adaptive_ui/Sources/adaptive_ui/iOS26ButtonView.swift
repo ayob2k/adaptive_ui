@@ -84,6 +84,12 @@ class iOS26ButtonView: NSObject, FlutterPlatformView {
 
             // Use smooth rectangle border setting
             useSmoothRectangleBorder = config["useSmoothRectangleBorder"] as? Bool ?? true
+
+            // Start hidden when Flutter already has another route on top
+            if let hidden = config["hidden"] as? Bool, hidden {
+                _view.isHidden = true
+                _view.isUserInteractionEnabled = false
+            }
         } else {
             buttonId = 0
         }
@@ -392,6 +398,16 @@ class iOS26ButtonView: NSObject, FlutterPlatformView {
                 if #available(iOS 13.0, *) {
                     _view.overrideUserInterfaceStyle = dark ? .dark : .light
                 }
+            }
+            result(nil)
+
+        case "setHidden":
+            // Hide without destroying the platform view so returning to the
+            // page does not recreate / re-animate the Liquid Glass button.
+            if let args = call.arguments as? [String: Any],
+               let hidden = args["hidden"] as? Bool {
+                _view.isHidden = hidden
+                _view.isUserInteractionEnabled = !hidden
             }
             result(nil)
 
